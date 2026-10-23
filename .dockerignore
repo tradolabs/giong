@@ -1,0 +1,10 @@
+**
+!Cargo.toml
+!Cargo.lock
+!apps/
+!apps/**
+!packages/
+!packages/**
+**/.env
+**/.env.*
+!**/.env.example

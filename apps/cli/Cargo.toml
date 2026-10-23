@@ -1,0 +1,16 @@
+[package]
+name = "giong-cli"
+version = "0.1.0"
+edition = "2024"
+description = "Add repositories and stacks to Giong"
+
+[[bin]]
+name = "giong"
+path = "src/main.rs"
+
+[dependencies]
+anyhow = "1"
+dotenvy = "0.15.7"
+clap = { version = "4", features = ["derive"] }
+giong-core = { path = "../../packages/core" }
+tokio.workspace = true

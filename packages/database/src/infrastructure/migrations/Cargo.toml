@@ -1,0 +1,10 @@
+[package]
+name = "migrations"
+version = "0.1.0"
+edition = "2024"
+publish = false
+
+[dependencies]
+sea-orm-migration = { version = "2.0.4", default-features = false, features = ["cli", "sqlx-sqlite", "runtime-tokio"] }
+sha1 = "0.11"
+tokio = { workspace = true, features = ["macros"] }

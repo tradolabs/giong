@@ -1,0 +1,162 @@
+<!doctype html>
+<html lang="vi">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#f5f2ea" />
+    <title>Sự tích Thánh Gióng · Giong</title>
+    <style>
+      :root {
+        color-scheme: light;
+        color: #363c33;
+        background: #f5f2ea;
+        font-family: Georgia, "Times New Roman", serif;
+      }
+
+      * { box-sizing: border-box; }
+
+      body {
+        margin: 0;
+        min-height: 100svh;
+        display: grid;
+        grid-template-rows: auto 1fr auto;
+        background: radial-gradient(ellipse at 50% 42%, #fffdf7, transparent 65%);
+      }
+
+      header, footer {
+        padding: 28px clamp(24px, 5vw, 72px);
+        font-family: system-ui, sans-serif;
+      }
+
+      header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 24px;
+        font-size: 12px;
+        font-weight: 500;
+        letter-spacing: 0.22em;
+        text-transform: uppercase;
+      }
+
+      main {
+        align-self: center;
+        padding: 48px 24px 80px;
+        text-align: center;
+      }
+
+      .languages { display: flex; gap: 8px; }
+      .languages button {
+        border: 1px solid transparent;
+        border-radius: 4px;
+        padding: 8px 10px;
+        background: transparent;
+        color: #827e70;
+        font: inherit;
+        letter-spacing: normal;
+        cursor: pointer;
+      }
+      .languages button[aria-pressed="true"] { border-color: #b9ae96; color: #363c33; }
+      .languages button:hover { background: #eae5d9; }
+      .languages button:focus-visible { outline: 2px solid #8a7956; outline-offset: 3px; }
+
+      .eyebrow, footer {
+        color: #827e70;
+        font-family: system-ui, sans-serif;
+        font-size: 10px;
+        letter-spacing: 0.2em;
+        text-transform: uppercase;
+      }
+
+      h1 {
+        margin: 20px 0 48px;
+        font-size: clamp(40px, 8vw, 72px);
+        font-weight: 400;
+        line-height: 1.2;
+        letter-spacing: -0.035em;
+      }
+
+      article {
+        max-width: 660px;
+        margin: 0 auto;
+        text-align: left;
+        font-size: clamp(18px, 2.5vw, 21px);
+        line-height: 1.9;
+        text-wrap: pretty;
+      }
+
+      article p { margin: 0 0 1.25em; }
+      article p:first-child::first-letter {
+        float: left;
+        margin: 8px 12px 0 0;
+        font-size: 64px;
+        line-height: 1;
+        color: #8a7956;
+      }
+      .ending { margin: 36px 0 0; text-align: center; color: #a99670; letter-spacing: 0.5em; }
+      footer { text-align: center; font-size: 9px; line-height: 1.8; }
+
+      @media (max-width: 480px) {
+        main { padding-bottom: 48px; }
+        h1 { margin-bottom: 32px; }
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <span>Giong</span>
+      <nav class="languages" aria-label="Language">
+        <button type="button" data-language="vi" lang="vi" aria-pressed="true">Tiếng Việt</button>
+        <button type="button" data-language="en" lang="en" aria-pressed="false">English</button>
+      </nav>
+    </header>
+    <main>
+      <section lang="vi">
+      <p class="eyebrow">Truyền thuyết Việt Nam</p>
+      <h1>Sự tích Thánh Gióng</h1>
+      <article aria-label="Sự tích Thánh Gióng kể lại">
+        <p>Ngày xưa, vào đời Hùng Vương thứ sáu, ở làng Gióng có hai vợ chồng già hiền lành mà mãi chưa có con. Một hôm ra đồng, người vợ thấy một dấu chân rất lớn, bèn đặt chân mình vào ướm thử. Ít lâu sau, bà mang thai rồi sinh được một cậu bé. Nhưng lên ba tuổi, cậu vẫn chưa biết nói, biết cười, cũng chẳng biết đi.</p>
+        <p>Bấy giờ, giặc Ân kéo sang xâm lược. Nhà vua sai sứ giả đi khắp nơi tìm người tài cứu nước. Nghe tiếng rao, cậu bé bỗng cất lời nhờ mẹ mời sứ giả vào. Cậu xin nhà vua rèn cho một con ngựa sắt, một chiếc roi sắt và một bộ áo giáp sắt để ra trận đánh giặc.</p>
+        <p>Từ hôm ấy, Gióng lớn nhanh như thổi. Cơm ăn bao nhiêu cũng không đủ, áo vừa mặc đã chật. Bà con trong làng cùng góp gạo nuôi cậu, gửi gắm niềm mong mỏi đánh đuổi quân thù.</p>
+        <p>Khi giặc đến gần, cũng là lúc ngựa sắt, roi sắt và áo giáp được mang tới. Gióng vươn vai thành một tráng sĩ, khoác giáp, cầm roi, nhảy lên ngựa. Ngựa sắt phun lửa, đưa Gióng xông thẳng vào quân giặc. Roi sắt gãy, chàng nhổ những bụi tre bên đường làm vũ khí, tiếp tục đánh cho giặc tan tác.</p>
+        <p>Dẹp yên giặc, Gióng cưỡi ngựa lên núi Sóc. Tại đó, chàng cởi áo giáp sắt, rồi cả người lẫn ngựa bay về trời. Nhớ công ơn người anh hùng, nhà vua phong chàng là Phù Đổng Thiên Vương và cho lập đền thờ.</p>
+        <p>Người đời sau kể rằng những ao hồ liên tiếp là dấu chân ngựa sắt, còn những bụi tre ngả màu vàng là do lửa ngựa phun cháy. Câu chuyện về cậu bé làng Gióng vẫn được truyền lại qua bao thế hệ, như một lời nhắc về sức mạnh của lòng yêu nước và tình làng nghĩa xóm.</p>
+      </article>
+      </section>
+      <section lang="en" hidden>
+        <p class="eyebrow">A Vietnamese legend</p>
+        <h1>The Legend of Thánh Gióng</h1>
+        <article aria-label="The legend of Thánh Gióng retold">
+          <p>Long ago, during the reign of the sixth Hùng King, an elderly couple lived in the village of Gióng. They were kindhearted but had no children. One day, the wife discovered an enormous footprint in a field and placed her foot inside it. Soon afterward, she became pregnant and gave birth to a boy. Yet by the age of three, he still could not speak, laugh, or walk.</p>
+          <p>When invaders from Ân threatened the country, the king sent a messenger to seek someone who could defend it. Hearing the call, the boy suddenly spoke, asking his mother to invite the messenger inside. He requested an iron horse, an iron rod, and a suit of iron armor so that he could go into battle.</p>
+          <p>From that day on, Gióng grew at an astonishing pace. No meal could satisfy his hunger, and his clothes became too small almost as soon as he put them on. The villagers brought rice to feed him, placing their hopes for the country's safety in the extraordinary child.</p>
+          <p>As the enemy approached, the iron horse, rod, and armor arrived. Gióng stretched and rose into a mighty warrior. He put on the armor, took up the rod, and mounted the horse. Breathing fire, it carried him into battle. When his iron rod broke, he uprooted clumps of bamboo along the road and fought on until the invaders fled.</p>
+          <p>With peace restored, Gióng rode to Sóc Mountain. There, he removed his armor, and both he and his horse ascended into the sky. In gratitude, the king bestowed on him the title of Heavenly King of Phù Đổng and had a temple built in his honor.</p>
+          <p>People later told of ponds left by the iron horse's hoofprints and bamboo turned golden by its flames. The story of the boy from Gióng has been passed down through generations, a reminder of the strength found in love for one's homeland and the bonds of a community.</p>
+        </article>
+      </section>
+      <p class="ending" aria-hidden="true">· · ·</p>
+    </main>
+    <footer>
+      <span lang="vi">Kể lại từ truyện dân gian Việt Nam</span>
+      <span lang="en" hidden>Retold from Vietnamese folklore</span>
+    </footer>
+    <script>
+      const buttons = document.querySelectorAll('[data-language]');
+      buttons.forEach(button => {
+        button.addEventListener('click', () => {
+          const language = button.dataset.language;
+          document.documentElement.lang = language;
+          document.querySelectorAll('main section[lang], footer span[lang]').forEach(element => {
+            element.hidden = element.lang !== language;
+          });
+          buttons.forEach(item => {
+            item.setAttribute('aria-pressed', String(item === button));
+          });
+          const title = document.querySelector(`main section[lang="${language}"] h1`).textContent;
+          document.title = `${title} · Giong`;
+        });
+      });
+    </script>
+  </body>
+</html>

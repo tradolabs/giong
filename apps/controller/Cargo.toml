@@ -1,0 +1,15 @@
+[package]
+name = "giong-controller"
+version = "0.1.0"
+edition = "2024"
+description = "Foreground controller for Giong"
+
+[dependencies]
+anyhow = "1"
+axum = { version = "0.8", default-features = false, features = ["http1", "tokio"] }
+dotenvy = "0.15.7"
+futures-util = "0.3"
+giong-core = { path = "../../packages/core" }
+giong-webhook = { path = "../../packages/webhook" }
+tokio = { workspace = true, features = ["sync"] }
+tokio-cron-scheduler = "0.15"

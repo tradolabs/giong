@@ -1,0 +1,12 @@
+[package]
+name = "giong-storage"
+version = "0.1.0"
+edition = "2024"
+description = "Object storage for Giong"
+
+[dependencies]
+anyhow = "1"
+async-trait = "0.1"
+rust-s3 = { version = "0.37", default-features = false, features = ["tokio-rustls-tls", "fail-on-err"] }
+tokio = { workspace = true, features = ["fs"] }
+url = "2"

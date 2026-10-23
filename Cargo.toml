@@ -1,0 +1,17 @@
+[workspace]
+members = ["packages/core", "packages/database", "packages/database/src/infrastructure/migrations", "packages/git", "packages/webhook", "packages/storage", "apps/cli", "apps/controller"]
+resolver = "3"
+
+[workspace.package]
+version = "0.1.0"
+
+[profile.release]
+lto = "thin"
+
+[workspace.dependencies]
+tokio = { version = "1", features = ["macros", "rt", "time", "net"] }
+uuid = { version = "1", features = ["v7"] }
+
+[patch.crates-io]
+# Fix SQLite + proxy compilation until the next SeaORM release.
+sea-orm = { git = "https://github.com/SeaQL/sea-orm", rev = "0c14cae49746cfa0e81e3daecade29e218992fa5" }
