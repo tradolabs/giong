@@ -1,0 +1,11 @@
+[package]
+name = "giong-scheduler"
+version.workspace = true
+edition = "2024"
+description = "Cron scheduling for Giong"
+
+[dependencies]
+futures-util = "0.3"
+thiserror.workspace = true
+tokio = { workspace = true, features = ["sync"] }
+tokio-cron-scheduler = "0.15"

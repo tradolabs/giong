@@ -1,6 +1,6 @@
 use std::collections::BTreeMap;
 
-use super::FieldValue;
+use super::field_value::FieldValue;
 
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct Document {

@@ -1,0 +1,13 @@
+[package]
+name = "giong-publisher"
+version = "0.1.0"
+edition = "2024"
+description = "Typed asynchronous event publishing with shared handler state"
+
+[dependencies]
+async-trait.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+tokio = { workspace = true, features = ["sync"] }
+tokio-events = { version = "0.3.2", default-features = false }

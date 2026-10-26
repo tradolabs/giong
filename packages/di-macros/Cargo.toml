@@ -1,0 +1,13 @@
+[package]
+name = "giong-di-macros"
+version.workspace = true
+edition = "2024"
+description = "Derive macro for giong-di"
+
+[lib]
+proc-macro = true
+
+[dependencies]
+proc-macro2 = "1"
+quote = "1"
+syn = { version = "2", features = ["full"] }

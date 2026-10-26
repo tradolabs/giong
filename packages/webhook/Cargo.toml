@@ -8,6 +8,6 @@ description = "Webhook verification and event parsing for Giong"
 hex = "0.4"
 hmac = "0.13"
 http = "1"
-serde = { version = "1", features = ["derive"] }
-serde_json = "1"
+serde.workspace = true
+serde_json.workspace = true
 sha2 = "0.11"

@@ -1,39 +1,35 @@
-use anyhow::Result;
 use clap::Parser;
-use giong_core::Application;
-use std::path::PathBuf;
+use giong_core::config::Config;
 
 mod command;
-mod resource;
 
+use crate::command::AddResource;
 use command::Command;
-use resource::Resource;
 
 #[derive(Parser)]
 #[command(name = "giong", version)]
 struct Cli {
     #[command(subcommand)]
     command: Command,
-    #[arg(long, global = true)]
-    data_dir: Option<PathBuf>,
 }
 
 #[tokio::main(flavor = "current_thread")]
-async fn main() -> Result<()> {
+async fn main() -> anyhow::Result<()> {
     dotenvy::dotenv().ok();
     let cli = Cli::parse();
-    let application = Application::new(cli.data_dir).await?;
-
+    let application = giong_core::bootstrap::ensure_initialized(Config::default()).await?;
     match cli.command {
+        Command::ResetAdminPassword => {
+            let password = application.reset_admin_password().await?;
+            println!("Admin password: {password}");
+        }
         Command::Add(resource) => match resource {
-            Resource::Repository { name, url, token } => {
+            AddResource::Repository { name, url, token } => {
                 application.add_repo(&name, &url, token.as_deref()).await?;
                 println!("Added repository {name}");
             }
-            Resource::Stack { name, repo_url, branch, folder_path } => {
-                application
-                    .add_stack(&name, &repo_url, &branch, &folder_path)
-                    .await?;
+            AddResource::Stack { name, repo_url, branch, folder_path } => {
+                application.add_stack(&name, &repo_url, &branch, &folder_path).await?;
                 println!("Added stack {name}");
             }
         },

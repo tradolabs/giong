@@ -5,15 +5,21 @@ edition = "2024"
 description = "A small Git-polling CI/CD runner"
 
 [dependencies]
-aes-gcm = "0.10.3"
-anyhow = "1"
-base64 = "0.22"
-futures-util = "0.3"
+giong-di = { path = "../di" }
 giong-database = { path = "../database" }
 giong-git = { path = "../git" }
-include_dir = "0.7.4"
-serde = { version = "1", features = ["derive"] }
-toml = "1.1.8"
-chrono = { version = "0.4", default-features = false, features = ["clock"] }
-tokio = { workspace = true, features = ["sync"] }
 giong-storage = { path = "../storage" }
+giong-publisher = { path = "../publisher" }
+giong-runner = { path = "../runner" }
+tokio = { workspace = true, features = ["fs", "sync"] }
+anyhow.workspace = true
+async-trait.workspace = true
+uuid = { workspace = true, features = ["serde"] }
+aes-gcm = "0.11.1"
+argon2 = "0.6.0"
+base64 = "0.23.1"
+jsonwebtoken = { version = "11.1", default-features = false, features = ["aws_lc_rs"] }
+serde.workspace = true
+chrono = { version = "0.4", default-features = false, features = ["clock"] }
+thiserror.workspace = true
+getrandom = "0.4"

@@ -5,5 +5,5 @@ edition = "2024"
 description = "Git operations and credential handling for Giong"
 
 [dependencies]
-anyhow = "1"
 git2 = { version = "0.21", features = ["https"] }
+thiserror.workspace = true

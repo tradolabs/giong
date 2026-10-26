@@ -15,6 +15,17 @@
       <sourceFolder url="file://$MODULE_DIR$/packages/storage/src" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/packages/webhook/src" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/apps/controller/tests" isTestSource="true" />
+      <sourceFolder url="file://$MODULE_DIR$/packages/di-macros/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/packages/di/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/packages/di/tests" isTestSource="true" />
+      <sourceFolder url="file://$MODULE_DIR$/packages/publisher/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/packages/publisher/tests" isTestSource="true" />
+      <sourceFolder url="file://$MODULE_DIR$/packages/queue/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/packages/queue/tests" isTestSource="true" />
+      <sourceFolder url="file://$MODULE_DIR$/packages/runner/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/packages/scheduler/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/packages/storage/tests" isTestSource="true" />
       <excludeFolder url="file://$MODULE_DIR$/target" />
     </content>
     <orderEntry type="inheritedJdk" />

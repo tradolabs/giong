@@ -5,12 +5,12 @@ edition = "2024"
 description = "Database abstraction with SQLite and Cloudflare D1 storage for Giong"
 
 [dependencies]
-anyhow = "1"
 migrations = { path = "src/infrastructure/migrations" }
 sea-orm = { version = "2.0.4", default-features = false, features = ["macros", "sqlx-sqlite", "runtime-tokio", "with-uuid", "proxy"] }
 reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }
-serde = { version = "1", features = ["derive"] }
-serde_json = "1"
+serde.workspace = true
+serde_json.workspace = true
 uuid = { workspace = true, features = ["serde"] }
 async-trait = "0.1"
 tokio.workspace = true
+thiserror.workspace = true

@@ -29,10 +29,7 @@ pub fn parse(
 ) -> Result<GithubWebhookEvent, (StatusCode, &'static str)> {
     verify_signature(secret, headers, body)?;
 
-    match headers
-        .get("x-github-event")
-        .and_then(|value| value.to_str().ok())
-    {
+    match headers.get("x-github-event").and_then(|value| value.to_str().ok()) {
         Some("ping") => return Ok(GithubWebhookEvent::Ping),
         Some("push") => {}
         Some(_) => return Ok(GithubWebhookEvent::Ignored),
@@ -67,12 +64,8 @@ fn verify_signature(
         .ok_or(invalid_signature)?;
     let mut digest = [0_u8; 32];
     hex::decode_to_slice(signature, &mut digest).map_err(|_| invalid_signature)?;
-    let mut mac = Hmac::<Sha256>::new_from_slice(secret.as_bytes()).map_err(|_| {
-        (
-            StatusCode::INTERNAL_SERVER_ERROR,
-            "Could not verify webhook\n",
-        )
-    })?;
+    let mut mac = Hmac::<Sha256>::new_from_slice(secret.as_bytes())
+        .map_err(|_| (StatusCode::INTERNAL_SERVER_ERROR, "Could not verify webhook\n"))?;
     mac.update(body);
     mac.verify_slice(&digest).map_err(|_| invalid_signature)?;
 

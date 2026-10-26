@@ -1,3 +1,4 @@
-pub mod job_model;
-pub mod repository_model;
-pub mod stack_model;
+pub mod job;
+pub mod repository;
+pub mod stack;
+pub mod user;

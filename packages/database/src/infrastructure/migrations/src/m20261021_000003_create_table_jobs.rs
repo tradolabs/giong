@@ -36,21 +36,17 @@ impl MigrationTrait for Migration {
                             .not_null()
                             .default(Expr::current_timestamp()),
                     )
-                    .to_owned(),
-            )
-            .await?;
-
-        manager
-            .create_foreign_key(
-                ForeignKey::create()
-                    .name(conventions::foreign_key_name(
-                        "jobs",
-                        &["stack_id"],
-                        "stacks",
-                        &["id"],
-                    ))
-                    .from("jobs", "stack_id")
-                    .to("stacks", "id")
+                    .foreign_key(
+                        ForeignKey::create()
+                            .name(conventions::foreign_key_name(
+                                "jobs",
+                                &["stack_id"],
+                                "stacks",
+                                &["id"],
+                            ))
+                            .from("jobs", "stack_id")
+                            .to("stacks", "id"),
+                    )
                     .to_owned(),
             )
             .await?;
@@ -59,9 +55,7 @@ impl MigrationTrait for Migration {
     }
 
     async fn down(&self, manager: &SchemaManager) -> Result<(), DbErr> {
-        manager
-            .drop_table(Table::drop().table("jobs").if_exists().to_owned())
-            .await?;
+        manager.drop_table(Table::drop().table("jobs").if_exists().to_owned()).await?;
 
         Ok(())
     }

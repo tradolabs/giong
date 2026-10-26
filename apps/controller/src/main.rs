@@ -1,35 +1,16 @@
-use crate::scheduler::Scheduler;
-use anyhow::Result;
-use giong_core::Application;
+use giong_core::{bootstrap, config::Config};
+mod errors;
 
-mod http;
-mod scheduler;
+mod presentation;
 
-#[tokio::main(flavor = "current_thread")]
-async fn main() -> Result<()> {
+fn main() -> anyhow::Result<()> {
     dotenvy::dotenv().ok();
-    let application = Application::new(None).await?;
-
-    tokio::try_join!(
-        application.consume_jobs(),
-        schedule(&application),
-        http::serve(&application)
-    )?;
-
-    Ok(())
-}
-
-pub async fn schedule(application: &Application) -> Result<()> {
-    if std::env::var("GIONG_SCHEDULE_ENABLED").as_deref() != Ok("true") {
-        return Ok(());
-    }
-
-    let mut scheduler = Scheduler::new().await?;
-    scheduler
-        .register("*/30 * * * * *", async || {
-            application.poll_repositories(None).await
-        })
-        .await?;
-
-    scheduler.start().await
+    let runtime = tokio::runtime::Builder::new_current_thread().enable_all().build()?;
+    let result = runtime.block_on(async {
+        let application = bootstrap::ensure_initialized(Config::default()).await?;
+        presentation::serve(application).await?;
+        Ok(())
+    });
+    runtime.shutdown_background();
+    result
 }

@@ -5,11 +5,14 @@ edition = "2024"
 description = "Foreground controller for Giong"
 
 [dependencies]
-anyhow = "1"
-axum = { version = "0.8", default-features = false, features = ["http1", "tokio"] }
-dotenvy = "0.15.7"
-futures-util = "0.3"
+anyhow.workspace = true
 giong-core = { path = "../../packages/core" }
+giong-scheduler = { path = "../../packages/scheduler" }
 giong-webhook = { path = "../../packages/webhook" }
+uuid.workspace = true
 tokio = { workspace = true, features = ["sync"] }
-tokio-cron-scheduler = "0.15"
+axum = { version = "0.8", default-features = false, features = ["http1", "json", "query", "tokio"] }
+jsonwebtoken = { version = "11.1", default-features = false, features = ["aws_lc_rs"] }
+dotenvy = "0.15.7"
+serde.workspace = true
+thiserror.workspace = true

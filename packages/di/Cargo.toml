@@ -1,0 +1,9 @@
+[package]
+name = "giong-di"
+version.workspace = true
+edition = "2024"
+description = "A minimal type-based dependency container"
+
+[dependencies]
+giong-di-macros = { path = "../di-macros" }
+thiserror.workspace = true

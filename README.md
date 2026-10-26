@@ -1,3 +1,3 @@
 # Giong
 
-A small CI/CD runner. Register repositories and stacks with the CLI, then run the controller.
+A small CI/CD runner that watches Git repositories and runs pipelines with Docker.

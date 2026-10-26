@@ -36,10 +36,8 @@ fn constraint_name(readable: String, hash_key: &str, hash: bool) -> String {
         return readable;
     }
     const HASH_HEX_LENGTH: usize = 27;
-    let hash: String = Sha1::digest(hash_key.as_bytes())
-        .iter()
-        .map(|byte| format!("{byte:02x}"))
-        .collect();
+    let hash: String =
+        Sha1::digest(hash_key.as_bytes()).iter().map(|byte| format!("{byte:02x}")).collect();
     format!("{readable}_{}", &hash[..HASH_HEX_LENGTH])
 }
 

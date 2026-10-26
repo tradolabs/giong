@@ -9,8 +9,8 @@ name = "giong"
 path = "src/main.rs"
 
 [dependencies]
-anyhow = "1"
-dotenvy = "0.15.7"
-clap = { version = "4", features = ["derive"] }
+anyhow.workspace = true
 giong-core = { path = "../../packages/core" }
 tokio.workspace = true
+dotenvy = "0.15.7"
+clap = { version = "4", features = ["derive"] }

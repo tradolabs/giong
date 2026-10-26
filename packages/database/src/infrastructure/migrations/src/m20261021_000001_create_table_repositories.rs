@@ -28,20 +28,13 @@ impl MigrationTrait for Migration {
                             .not_null()
                             .default(Expr::current_timestamp()),
                     )
-                    .to_owned(),
-            )
-            .await?;
-
-        manager
-            .create_index(
-                Index::create()
-                    .name(conventions::unique_constraint_name(
-                        "repositories",
-                        &["url"],
-                    ))
-                    .table("repositories")
-                    .col("url")
-                    .unique()
+                    .index(
+                        Index::create()
+                            .name(conventions::unique_constraint_name("repositories", &["url"]))
+                            .table("repositories")
+                            .col("url")
+                            .unique(),
+                    )
                     .to_owned(),
             )
             .await?;
@@ -50,9 +43,7 @@ impl MigrationTrait for Migration {
     }
 
     async fn down(&self, manager: &SchemaManager) -> Result<(), DbErr> {
-        manager
-            .drop_table(Table::drop().table("repositories").if_exists().to_owned())
-            .await?;
+        manager.drop_table(Table::drop().table("repositories").if_exists().to_owned()).await?;
 
         Ok(())
     }

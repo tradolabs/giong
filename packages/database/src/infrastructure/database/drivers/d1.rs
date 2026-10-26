@@ -1,4 +1,3 @@
-use anyhow::{Context, Result, ensure};
 use reqwest::{Client, Url};
 use sea_orm::{DbErr, ProxyDatabaseTrait, ProxyExecResult, ProxyRow, Statement, Value};
 use serde::Deserialize;
@@ -37,27 +36,26 @@ struct Meta {
 }
 
 impl D1 {
-    pub(crate) fn new(database_url: &str) -> Result<Self> {
-        let url = Url::parse(database_url)?;
-        let account = url.host_str().context("Missing D1 account ID")?;
-        let database = Uuid::parse_str(url.path().trim_start_matches('/'))?;
-        let token = url
+    pub(crate) fn new(database_url: &str) -> Result<Self, DbErr> {
+        let database_url =
+            Url::parse(database_url).map_err(|_| DbErr::Custom("invalid D1 URL".into()))?;
+
+        let account = database_url
+            .host_str()
+            .ok_or(DbErr::Custom("missing or invalid D1 account ID".into()))?;
+        let database = Uuid::parse_str(database_url.path().trim_start_matches('/'))
+            .map_err(|_| DbErr::Custom("missing or invalid D1 database ID".into()))?;
+        let token = database_url
             .password()
             .filter(|v| !v.is_empty())
-            .context("Missing D1 API token")?
+            .ok_or(DbErr::Custom("missing D1 API token".into()))?
             .to_owned();
 
-        ensure!(
-            account.len() == 32 && account.bytes().all(|b| b.is_ascii_hexdigit()),
-            "Invalid D1 account ID"
-        );
-        ensure!(
-            url.username().is_empty() && url.query().is_none() && url.fragment().is_none(),
-            "Invalid D1 URL"
-        );
-
         Ok(Self {
-            client: Client::builder().timeout(Duration::from_secs(30)).build()?,
+            client: Client::builder()
+                .timeout(Duration::from_secs(30))
+                .build()
+                .map_err(|error| DbErr::Custom(error.to_string()))?,
             endpoint: format!(
                 "https://api.cloudflare.com/client/v4/accounts/{account}/d1/database/{database}/query"
             ),
@@ -65,75 +63,87 @@ impl D1 {
         })
     }
 
-    async fn request(&self, statement: Statement) -> Result<QueryResult> {
+    async fn request(&self, statement: Statement) -> Result<QueryResult, DbErr> {
         let params = statement
             .values
             .into_iter()
             .flat_map(|v| v.0)
             .map(Self::bind_parameter)
-            .collect::<Result<Vec<_>>>()?;
+            .collect::<Result<Vec<_>, DbErr>>()?;
 
         let response: Response = self
             .client
             .post(&self.endpoint)
             .bearer_auth(&self.token)
-            .json(&json!({
-                "sql": statement.sql,
-                "params": params,
-            }))
+            .json(&json!({"sql": statement.sql,"params": params}))
             .send()
-            .await?
-            .error_for_status()?
+            .await
+            .map_err(|error| DbErr::Custom(format!("D1 request failed: {error}")))?
+            .error_for_status()
+            .map_err(|error| DbErr::Custom(format!("D1 returned an HTTP error: {error}")))?
             .json()
-            .await?;
+            .await
+            .map_err(|error| DbErr::Custom(format!("invalid D1 response: {error}")))?;
 
-        ensure!(response.success, "D1 query failed");
+        if !response.success {
+            return Err(DbErr::Custom("d1 query failed".into()));
+        }
 
         let result = response
             .result
             .into_iter()
             .next()
-            .context("Empty D1 result")?;
+            .ok_or_else(|| DbErr::Custom("empty D1 result".into()))?;
 
-        ensure!(result.success, "D1 query failed");
+        if !result.success {
+            return Err(DbErr::Custom("d1 query failed".into()));
+        }
 
         Ok(result)
     }
 
-    fn bind_row(row: Json) -> Result<ProxyRow> {
+    fn bind_row(row: Json) -> Result<ProxyRow, DbErr> {
         let Json::Object(row) = row else {
-            anyhow::bail!("Invalid D1 row");
+            return Err(DbErr::Custom("invalid D1 row".into()));
         };
 
         let values = row
             .into_iter()
             .map(|(name, json)| Ok((name, Self::bind_response(json)?)))
-            .collect::<Result<_>>()?;
+            .collect::<Result<_, DbErr>>()?;
 
         Ok(ProxyRow { values })
     }
 
-    fn bind_response(value: Json) -> Result<Value> {
+    fn bind_response(value: Json) -> Result<Value, DbErr> {
         Ok(match value {
             Json::Null => Value::String(None),
-            Json::Bool(value) => value.into(),
-            Json::Number(value) if value.is_i64() => value.as_i64().unwrap().into(),
-            Json::Number(value) => value.as_f64().context("Invalid number")?.into(),
-            Json::String(value) => value.into(),
-            _ => anyhow::bail!("Unsupported D1 response value"),
+            Json::Bool(v) => v.into(),
+            Json::Number(v) if v.is_i64() => v.as_i64().unwrap().into(),
+            Json::Number(v) => {
+                v.as_f64().ok_or_else(|| DbErr::Custom("invalid D1 number".into()))?.into()
+            }
+            Json::String(v) => Uuid::parse_str(&v).map_or_else(|_| v.into(), Into::into),
+            _ => return Err(DbErr::Custom("unsupported D1 response value".into())),
         })
     }
 
-    fn bind_parameter(value: Value) -> Result<Json> {
+    fn bind_parameter(value: Value) -> Result<Json, DbErr> {
         Ok(match value {
             Value::String(value) => json!(value),
             Value::Uuid(value) => json!(value),
             Value::Bool(value) => json!(value),
+            Value::TinyInt(value) => json!(value),
+            Value::SmallInt(value) => json!(value),
             Value::Int(value) => json!(value),
             Value::BigInt(value) => json!(value),
+            Value::TinyUnsigned(value) => json!(value),
+            Value::SmallUnsigned(value) => json!(value),
+            Value::Unsigned(value) => json!(value),
+            Value::BigUnsigned(value) => json!(value),
             Value::Float(value) => json!(value),
             Value::Double(value) => json!(value),
-            _ => anyhow::bail!("Unsupported D1 parameter type"),
+            _ => return Err(DbErr::Custom("unsupported D1 parameter type".into())),
         })
     }
 }
@@ -141,26 +151,12 @@ impl D1 {
 #[async_trait::async_trait]
 impl ProxyDatabaseTrait for D1 {
     async fn query(&self, statement: Statement) -> Result<Vec<ProxyRow>, DbErr> {
-        let query_result = self
-            .request(statement)
-            .await
-            .map_err(|error| DbErr::Custom(error.to_string()))?;
-        query_result
-            .values
-            .into_iter()
-            .map(|row| Self::bind_row(row).map_err(|error| DbErr::Custom(error.to_string())))
-            .collect()
+        let query_result = self.request(statement).await?;
+        query_result.values.into_iter().map(Self::bind_row).collect()
     }
 
     async fn execute(&self, statement: Statement) -> Result<ProxyExecResult, DbErr> {
-        let query_result = self
-            .request(statement)
-            .await
-            .map_err(|error| DbErr::Custom(error.to_string()))?;
-
-        Ok(ProxyExecResult::new(
-            query_result.meta.last_row_id,
-            query_result.meta.changes,
-        ))
+        let query_result = self.request(statement).await?;
+        Ok(ProxyExecResult::new(query_result.meta.last_row_id, query_result.meta.changes))
     }
 }

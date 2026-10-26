@@ -1,0 +1,11 @@
+[package]
+name = "giong-runner"
+version.workspace = true
+edition = "2024"
+description = "Run Giong pipelines in containers"
+
+[dependencies]
+thiserror.workspace = true
+serde.workspace = true
+toml = "1.1.8"
+include_dir = "0.7.4"

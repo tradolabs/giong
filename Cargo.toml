@@ -1,5 +1,5 @@
 [workspace]
-members = ["packages/core", "packages/database", "packages/database/src/infrastructure/migrations", "packages/git", "packages/webhook", "packages/storage", "apps/cli", "apps/controller"]
+members = ["packages/core", "packages/runner", "packages/scheduler", "packages/database", "packages/database/src/infrastructure/migrations", "packages/git", "packages/webhook", "packages/storage", "packages/publisher", "packages/di", "packages/di-macros", "apps/cli", "apps/controller"]
 resolver = "3"
 
 [workspace.package]
@@ -9,6 +9,11 @@ version = "0.1.0"
 lto = "thin"
 
 [workspace.dependencies]
+anyhow = "1"
+async-trait = "0.1"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+thiserror = "2"
 tokio = { version = "1", features = ["macros", "rt", "time", "net"] }
 uuid = { version = "1", features = ["v7"] }
 

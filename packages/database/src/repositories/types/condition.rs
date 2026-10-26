@@ -1,4 +1,4 @@
-use super::FieldValue;
+use super::field_value::FieldValue;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Operator {
@@ -17,8 +17,7 @@ impl Condition {
     }
 
     pub fn eq(mut self, field: impl Into<String>, value: impl Into<FieldValue>) -> Self {
-        self.filters
-            .push((field.into(), Operator::Eq(value.into())));
+        self.filters.push((field.into(), Operator::Eq(value.into())));
         self
     }
 
@@ -27,10 +26,8 @@ impl Condition {
         field: impl Into<String>,
         values: impl IntoIterator<Item = V>,
     ) -> Self {
-        self.filters.push((
-            field.into(),
-            Operator::In(values.into_iter().map(Into::into).collect()),
-        ));
+        self.filters
+            .push((field.into(), Operator::In(values.into_iter().map(Into::into).collect())));
         self
     }
 }

@@ -30,32 +30,24 @@ impl MigrationTrait for Migration {
                             .not_null()
                             .default(Expr::current_timestamp()),
                     )
-                    .to_owned(),
-            )
-            .await?;
-
-        manager
-            .create_index(
-                Index::create()
-                    .name(conventions::unique_constraint_name("stacks", &["name"]))
-                    .table("stacks")
-                    .col("name")
-                    .unique()
-                    .to_owned(),
-            )
-            .await?;
-
-        manager
-            .create_foreign_key(
-                ForeignKey::create()
-                    .name(conventions::foreign_key_name(
-                        "stacks",
-                        &["repo_url"],
-                        "repositories",
-                        &["url"],
-                    ))
-                    .from("stacks", "repo_url")
-                    .to("repositories", "url")
+                    .foreign_key(
+                        ForeignKey::create()
+                            .name(conventions::foreign_key_name(
+                                "stacks",
+                                &["repo_url"],
+                                "repositories",
+                                &["url"],
+                            ))
+                            .from("stacks", "repo_url")
+                            .to("repositories", "url"),
+                    )
+                    .index(
+                        Index::create()
+                            .name(conventions::unique_constraint_name("stacks", &["name"]))
+                            .table("stacks")
+                            .col("name")
+                            .unique(),
+                    )
                     .to_owned(),
             )
             .await?;
@@ -64,9 +56,7 @@ impl MigrationTrait for Migration {
     }
 
     async fn down(&self, manager: &SchemaManager) -> Result<(), DbErr> {
-        manager
-            .drop_table(Table::drop().table("stacks").if_exists().to_owned())
-            .await?;
+        manager.drop_table(Table::drop().table("stacks").if_exists().to_owned()).await?;
 
         Ok(())
     }

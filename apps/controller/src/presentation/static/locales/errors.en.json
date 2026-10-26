@@ -1,0 +1,26 @@
+{
+  "http": {
+    "bad_request": "The request is invalid.",
+    "not_found": "The requested resource was not found.",
+    "method_not_allowed": "This request method is not supported.",
+    "payload_too_large": "The request is too large.",
+    "unsupported_media_type": "The request content type is not supported.",
+    "internal_error": "An error occurred. Please try again later."
+  },
+  "modules": {
+    "auth": {
+      "invalid_credentials": "The username or password is incorrect.",
+      "unauthorized": "Please sign in again."
+    },
+    "job": {
+      "invalid_id": "The job ID is invalid.",
+      "not_found": "The job was not found."
+    },
+    "webhook": {
+      "invalid_signature": "The webhook signature is invalid.",
+      "invalid_payload": "The webhook payload is invalid.",
+      "service_unavailable": "The webhook service is unavailable.",
+      "queue_unavailable": "The webhook queue is unavailable."
+    }
+  }
+}

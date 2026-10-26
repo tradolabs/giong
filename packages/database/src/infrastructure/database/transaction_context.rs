@@ -7,10 +7,7 @@ tokio::task_local! {
 }
 
 pub(crate) fn current(database: usize) -> Option<Arc<DatabaseTransaction>> {
-    TRANSACTIONS
-        .try_with(|transactions| transactions.get(&database).cloned())
-        .ok()
-        .flatten()
+    TRANSACTIONS.try_with(|transactions| transactions.get(&database).cloned()).ok().flatten()
 }
 
 pub(crate) async fn scope<T>(

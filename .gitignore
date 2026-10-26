@@ -1,3 +1,5 @@
 /target/
 /.giong/
 .env
+.idea
+.wrangler
