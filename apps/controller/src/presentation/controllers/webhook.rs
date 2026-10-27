@@ -1,4 +1,3 @@
-use crate::errors::controller_error::ControllerError;
 use crate::presentation::exceptions::http_exception::HttpException;
 use crate::presentation::exceptions::http_exception::UnauthorizedException;
 use crate::presentation::exceptions::http_exception::{
@@ -23,7 +22,7 @@ pub(in crate::presentation) struct WebhookState {
 
 pub(in crate::presentation) fn setup(
     application: Arc<Application>,
-) -> (WebhookState, impl Future<Output = Result<(), ControllerError>>) {
+) -> (WebhookState, impl Future<Output = anyhow::Result<()>>) {
     let github_secret =
         std::env::var("GIONG_GITHUB_WEBHOOK_SECRET").ok().filter(|value| !value.is_empty());
 
@@ -74,7 +73,7 @@ pub(in crate::presentation) async fn on_github_event(
 async fn callback(
     application: Arc<Application>,
     mut receiver: mpsc::Receiver<GithubPushEvent>,
-) -> Result<(), ControllerError> {
+) -> anyhow::Result<()> {
     while let Some(event) = receiver.recv().await {
         let repository_url = event.repository.clone_url.clone();
         let reference = event.reference.clone();

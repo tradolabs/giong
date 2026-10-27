@@ -1,0 +1,82 @@
+:root {
+  color-scheme: light;
+  --bg-page: #ffffff;
+  --bg-surface: #ffffff;
+  --bg-soft: #f4f6f9;
+  --bg-code: #fbfcfe;
+  --border-subtle: #e5eaf0;
+  --border-strong: #cdd6e1;
+  --text-primary: #253247;
+  --text-secondary: #5d6b7e;
+  --text-muted: #6b788b;
+  --accent: #4b6688;
+  --accent-hover: #3b5372;
+  --accent-soft: #eff4fa;
+  --accent-border: #cddbea;
+  --accent-light: #7c96b6;
+  --success: #276749;
+  --success-soft: #eff7f1;
+  --success-border: #d3e7d8;
+  --running: #315fa3;
+  --running-soft: #f0f5fc;
+  --running-border: #d6e2f3;
+  --warning: #7b601e;
+  --warning-soft: #fbf7eb;
+  --warning-border: #e9dfbf;
+  --danger: #b02e3d;
+  --danger-soft: #fdf1f2;
+  --danger-border: #f0d3d7;
+  --font-sans: "IBM Plex Sans", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+
+  font-family: var(--font-sans);
+  color: var(--text-primary);
+  background: var(--bg-page);
+  font-size: 14px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  min-width: 320px;
+  min-height: 100svh;
+}
+
+button, input { font: inherit; }
+button { cursor: pointer; }
+
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+}
+
+::selection { background: #dce7f3; color: var(--text-primary); }
+
+.brand-mark {
+  display: inline-grid;
+  place-items: center;
+  flex: none;
+  width: 32px;
+  height: 32px;
+  border-radius: 6px;
+  background: var(--accent);
+  color: #ffffff;
+  font-family: var(--font-mono);
+  font-size: 20px;
+  font-weight: 400;
+  line-height: 1;
+  letter-spacing: -.08em;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

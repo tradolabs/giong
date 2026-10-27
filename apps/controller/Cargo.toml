@@ -9,10 +9,11 @@ anyhow.workspace = true
 giong-core = { path = "../../packages/core" }
 giong-scheduler = { path = "../../packages/scheduler" }
 giong-webhook = { path = "../../packages/webhook" }
-uuid.workspace = true
+uuid = { workspace = true, features = ["serde"] }
 tokio = { workspace = true, features = ["sync"] }
 axum = { version = "0.8", default-features = false, features = ["http1", "json", "query", "tokio"] }
 jsonwebtoken = { version = "11.1", default-features = false, features = ["aws_lc_rs"] }
 dotenvy = "0.15.7"
 serde.workspace = true
 thiserror.workspace = true
+tower-http = { version = "0.6", features = ["cors"] }

@@ -3,3 +3,6 @@
 .env
 .idea
 .wrangler
+node_modules/
+dist/
+.pnpm-store/

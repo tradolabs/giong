@@ -16,7 +16,6 @@ pub struct SignInInput {
     pub password: String,
 }
 
-#[derive(Serialize)]
 pub struct SignInOutput {
     pub access_token: String,
     pub expires_in: u64,

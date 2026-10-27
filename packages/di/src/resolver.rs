@@ -36,4 +36,22 @@ impl<'a> Resolver<'a> {
         let cached = registration.instance.get_or_init(|| instance);
         Ok(Arc::clone(cached).downcast::<T>().expect("registration type matches its key"))
     }
+
+    pub fn get_optional<T: Any + Send + Sync>(&mut self) -> Result<Option<Arc<T>>, Error> {
+        match self.get::<T>() {
+            Ok(instance) => Ok(Some(instance)),
+            Err(Error::Missing(name)) if name == type_name::<T>() => Ok(None),
+            Err(error) => Err(error),
+        }
+    }
+
+    pub fn get_dyn<T: ?Sized + Send + Sync + 'static>(&mut self) -> Result<Arc<T>, Error> {
+        self.get::<Arc<T>>().map(|instance| Arc::clone(instance.as_ref()))
+    }
+
+    pub fn get_optional_dyn<T: ?Sized + Send + Sync + 'static>(
+        &mut self,
+    ) -> Result<Option<Arc<T>>, Error> {
+        Ok(self.get_optional::<Arc<T>>()?.map(|instance| Arc::clone(instance.as_ref())))
+    }
 }

@@ -1,6 +1,8 @@
 pub mod create_repository;
 pub mod create_stack;
 pub mod get_job_logs;
+pub mod get_jobs;
+pub mod get_stacks;
 pub mod poll_repositories;
 pub mod reset_admin_password;
 pub mod run_job;

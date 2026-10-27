@@ -3,6 +3,8 @@ use crate::application::use_cases::{
     create_repository::{CreateRepositoryInput, CreateRepositoryUseCase},
     create_stack::{CreateStackInput, CreateStackUseCase},
     get_job_logs::{GetJobLogsInput, GetJobLogsUseCase},
+    get_jobs::{GetJobsInput, GetJobsUseCase},
+    get_stacks::GetStacksUseCase,
     poll_repositories::PollRepositoriesUseCase,
     reset_admin_password::ResetAdminPasswordUseCase,
     run_job::{RunJobInput, RunJobUseCase},
@@ -10,6 +12,7 @@ use crate::application::use_cases::{
     use_case::UseCase,
 };
 use crate::config::Config;
+use giong_database::{JobEntity, StackEntity};
 use giong_di::Container;
 use std::sync::Arc;
 use uuid::Uuid;
@@ -105,6 +108,18 @@ impl Application {
             .get::<GetJobLogsUseCase>()
             .map_err(Exception::unexpected)?
             .execute(GetJobLogsInput { job_id: *job_id, from_lines })
+            .await
+    }
+
+    pub async fn get_stacks(&self) -> Result<Vec<StackEntity>, Exception> {
+        self.container.get::<GetStacksUseCase>().map_err(Exception::unexpected)?.execute(()).await
+    }
+
+    pub async fn get_jobs(&self, stack_id: Uuid) -> Result<Vec<JobEntity>, Exception> {
+        self.container
+            .get::<GetJobsUseCase>()
+            .map_err(Exception::unexpected)?
+            .execute(GetJobsInput { stack_id })
             .await
     }
 }

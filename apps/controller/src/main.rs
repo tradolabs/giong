@@ -1,5 +1,4 @@
 use giong_core::{bootstrap, config::Config};
-mod errors;
 
 mod presentation;
 

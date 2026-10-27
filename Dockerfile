@@ -1,5 +1,13 @@
 FROM docker:29-cli AS docker-cli
 
+FROM node:26-bookworm-slim AS console-builder
+WORKDIR /console
+COPY apps/console/package.json apps/console/pnpm-lock.yaml ./
+RUN npm install --global pnpm@11.0.5 \
+    && pnpm install --frozen-lockfile
+COPY apps/console ./
+RUN pnpm build
+
 FROM rust:1.99-bookworm AS builder
 WORKDIR /src
 COPY Cargo.toml Cargo.lock ./
@@ -9,15 +17,17 @@ RUN cargo build --locked --release -p giong-controller -p giong-cli
 
 FROM debian:bookworm-slim
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends ca-certificates git libssl3 zlib1g \
+    && apt-get install -y --no-install-recommends ca-certificates git libssl3 zlib1g nginx-light \
     && rm -rf /var/lib/apt/lists/*
 COPY --from=docker-cli /usr/local/bin/docker /usr/local/bin/docker
 COPY --from=docker-cli /usr/local/libexec/docker/cli-plugins/docker-buildx /usr/local/libexec/docker/cli-plugins/docker-buildx
 COPY --from=builder /src/target/release/giong /usr/local/bin/giong
 COPY --from=builder /src/target/release/giong-controller /usr/local/bin/giong-controller
+COPY --from=console-builder /console/dist /usr/share/nginx/html
+COPY nginx.conf /etc/nginx/nginx.conf
 ENV HOME=/data
 RUN mkdir -p /data/.giong
 WORKDIR /data
 VOLUME ["/data/.giong"]
-EXPOSE 3000
-CMD ["giong-controller"]
+EXPOSE 80
+CMD ["sh", "-c", "nginx && exec giong-controller"]

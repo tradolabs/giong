@@ -3,9 +3,9 @@ use crate::application::helpers::filesystem::root_dir;
 use crate::application::ports::queue::queue_manager::QueueManager;
 use crate::application::use_cases::{
     create_repository::CreateRepositoryUseCase, create_stack::CreateStackUseCase,
-    get_job_logs::GetJobLogsUseCase, poll_repositories::PollRepositoriesUseCase,
-    reset_admin_password::ResetAdminPasswordUseCase, run_job::RunJobUseCase,
-    sign_in::SignInUseCase,
+    get_job_logs::GetJobLogsUseCase, get_jobs::GetJobsUseCase, get_stacks::GetStacksUseCase,
+    poll_repositories::PollRepositoriesUseCase, reset_admin_password::ResetAdminPasswordUseCase,
+    run_job::RunJobUseCase, sign_in::SignInUseCase,
 };
 use crate::config::Config;
 use crate::infrastructure::adapters::queue_manager::QueueManagerImpl;
@@ -41,6 +41,8 @@ pub async fn ensure_initialized(mut config: Config) -> anyhow::Result<Arc<Applic
         .register_type::<CreateRepositoryUseCase>()
         .register_type::<CreateStackUseCase>()
         .register_type::<GetJobLogsUseCase>()
+        .register_type::<GetJobsUseCase>()
+        .register_type::<GetStacksUseCase>()
         .register_type::<PollRepositoriesUseCase>()
         .register_type::<ResetAdminPasswordUseCase>()
         .register_type::<RunJobUseCase>()
