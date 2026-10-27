@@ -2,7 +2,7 @@ FROM docker:29-cli AS docker-cli
 
 FROM node:26-bookworm-slim AS console-builder
 WORKDIR /console
-COPY apps/console/package.json apps/console/pnpm-lock.yaml ./
+COPY apps/console/package.json apps/console/pnpm-lock.yaml apps/console/pnpm-workspace.yaml ./
 RUN npm install --global pnpm@11.0.5 \
     && pnpm install --frozen-lockfile
 COPY apps/console ./

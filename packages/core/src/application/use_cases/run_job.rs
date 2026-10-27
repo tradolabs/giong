@@ -57,6 +57,8 @@ impl UseCase for RunJobUseCase {
             return Ok(());
         }
 
+        eprintln!("Job {} running (stack: {}, commit: {})", job.id, job.stack_id, job.commit_sha);
+
         let stack = db
             .stacks
             .find_one(Condition::new().eq("id", job.stack_id))
@@ -80,6 +82,8 @@ impl UseCase for RunJobUseCase {
                     .set("finished_at", Utc::now().format("%Y-%m-%d %H:%M:%S").to_string()),
             )
             .await?;
+
+        eprintln!("Job {} finished: {} (exit_code: {code:?})", input.job_id, status.as_str());
 
         Ok(())
     }
