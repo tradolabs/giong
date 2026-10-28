@@ -1,5 +1,6 @@
 use crate::application::exceptions::base::Exception;
 use crate::application::use_cases::{
+    create_job::CreateJobUseCase,
     create_repository::{CreateRepositoryInput, CreateRepositoryUseCase},
     create_stack::{CreateStackInput, CreateStackUseCase},
     get_job_logs::{GetJobLogsInput, GetJobLogsUseCase},
@@ -120,6 +121,14 @@ impl Application {
             .get::<GetJobsUseCase>()
             .map_err(Exception::unexpected)?
             .execute(GetJobsInput { stack_id })
+            .await
+    }
+
+    pub async fn create_job(&self, stack_id: Uuid) -> Result<JobEntity, Exception> {
+        self.container
+            .get::<CreateJobUseCase>()
+            .map_err(Exception::unexpected)?
+            .execute(stack_id)
             .await
     }
 }

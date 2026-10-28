@@ -26,7 +26,9 @@ export function Stack() {
             if (!response.ok) {
                 throw new Error(`Reconciler returned ${response.status}: ${await response.text()}`);
             }
-            return response.json() as Promise<ReconcileOutput>;
+            const output: ReconcileOutput = await response.json();
+            console.log(JSON.stringify(output, null, 2));
+            return output;
         },
     };
 }

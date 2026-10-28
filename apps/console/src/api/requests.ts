@@ -59,6 +59,10 @@ export function fetchJobs(stackId: string): Promise<Job[]> {
   return request<Job[]>(`/stacks/${encodeURIComponent(stackId)}/jobs`);
 }
 
+export function createJob(stackId: string): Promise<Job> {
+  return request<Job>(`/stacks/${encodeURIComponent(stackId)}/jobs`, { method: "POST" });
+}
+
 export function fetchJobLogs(jobId: string, fromLines = 0): Promise<string> {
   return request<string>(
     `/jobs/${encodeURIComponent(jobId)}/logs?from_lines=${fromLines}`

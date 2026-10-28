@@ -2,7 +2,7 @@
   "name": "@giong/sdk",
   "version": "0.1.0",
   "type": "module",
-  "packageManager": "pnpm@11.0.5",
+  "packageManager": "pnpm@12.15.0",
   "files": [
     "dist"
   ],

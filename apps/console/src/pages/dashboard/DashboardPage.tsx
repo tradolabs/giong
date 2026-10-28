@@ -96,6 +96,13 @@ export function DashboardPage({ onSignOut }: { onSignOut: () => void }) {
           onSelectStack={setSelectedStackId}
         />
         <JobsPane
+          key={selectedStackId}
+          stackId={selectedStackId}
+          onSignOut={onSignOut}
+          onCreated={(job) => {
+            setJobs((current) => [job, ...current.filter((item) => item.id !== job.id)]);
+            setSelectedJobId(job.id);
+          }}
           jobs={jobs}
           stacks={stacks}
           selectedJobId={selectedJobId}

@@ -32,6 +32,7 @@
   transition: background .16s ease, border-color .16s ease, color .16s ease;
 }
 .btn-ghost:hover { border-color: var(--text-muted); background: var(--bg-soft); color: var(--text-primary); }
+.btn-ghost:disabled { opacity: .5; cursor: not-allowed; }
 .btn-ghost[aria-pressed="true"] { border-color: var(--accent-border); background: var(--accent-soft); color: var(--accent); }
 
 .workspace {
@@ -100,3 +101,4 @@
   .pane { height: 240px; }
   .log-pane { grid-column: auto; height: max(65svh, 460px); }
 }
+.job-error { margin: 0; padding: 12px 16px; color: var(--danger); border-bottom: 1px solid var(--border-subtle); }

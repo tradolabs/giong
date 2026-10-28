@@ -67,7 +67,11 @@ impl PollRepositoriesUseCase {
     async fn has_active_job(&self, stack_id: Uuid) -> Result<bool, giong_database::error::Error> {
         self.database
             .jobs
-            .exists(Condition::new().eq("stack_id", stack_id).is_in("status", [JobStatus::Running]))
+            .exists(
+                Condition::new()
+                    .eq("stack_id", stack_id)
+                    .is_in("status", [JobStatus::Pending, JobStatus::Running]),
+            )
             .await
     }
 

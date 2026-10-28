@@ -38,10 +38,10 @@ pub fn run_docker(
         Command::new("docker").args([
             "run",
             "--rm",
-            "--network",
-            "giong",
+            "--add-host",
+            "host.docker.internal:host-gateway",
             "--env",
-            "GIONG_RECONCILER_URL=http://reconciler:2929",
+            "GIONG_RECONCILER_URL=http://host.docker.internal:2929",
             image,
         ]),
         logger,

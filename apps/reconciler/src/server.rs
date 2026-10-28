@@ -32,7 +32,10 @@ async fn reconcile(
     Json(input): Json<ReconcileRequest>,
 ) -> Result<Json<ReconcileResponse>, (StatusCode, String)> {
     let mut response = ReconcileResponse::default();
-    for resource in input.resources {
+    for mut resource in input.resources {
+        if let Some(config) = resource.config.as_object_mut() {
+            config.remove("type");
+        }
         let created = tokio::time::timeout(Duration::from_secs(60), async {
             let has_resource =
                 runtime.read(&resource.resource_type, &resource.config).await?.is_none();
@@ -44,15 +47,7 @@ async fn reconcile(
         .await
         .map_err(|_| (StatusCode::GATEWAY_TIMEOUT, "Provider reconcile timed out".into()))?
         .map_err(|error| (StatusCode::BAD_GATEWAY, error.to_string()))?;
-        let entry = Resource {
-            name: resource
-                .config
-                .get("name")
-                .and_then(|name| name.as_str())
-                .unwrap_or(&resource.key)
-                .to_owned(),
-            resource_type: resource.resource_type,
-        };
+        let entry = Resource { name: resource.name, resource_type: resource.resource_type };
         if created {
             response.created.push(entry);
         } else {

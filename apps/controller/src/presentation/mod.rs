@@ -47,7 +47,7 @@ pub async fn serve(application: Arc<Application>) -> anyhow::Result<()> {
         .merge(
             Router::new()
                 .route("/stacks", get(stacks::get_stacks))
-                .route("/stacks/{stack_id}/jobs", get(stacks::get_jobs))
+                .route("/stacks/{stack_id}/jobs", get(stacks::get_jobs).post(jobs::create_job))
                 .route("/jobs/{job_id}/logs", get(jobs::get_job_logs))
                 .route_layer(middleware::from_fn_with_state(
                     state.clone(),

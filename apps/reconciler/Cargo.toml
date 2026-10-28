@@ -5,6 +5,7 @@ edition = "2024"
 
 [dependencies]
 anyhow.workspace = true
+dotenvy = "0.15.7"
 giong-provider = { path = "../../packages/provider" }
 serde.workspace = true
 serde_json.workspace = true

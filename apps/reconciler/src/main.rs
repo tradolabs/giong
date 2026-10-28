@@ -7,6 +7,7 @@ mod server;
 
 #[tokio::main(flavor = "current_thread")]
 async fn main() -> anyhow::Result<()> {
+    dotenvy::dotenv().ok();
     let directory = PathBuf::from(env::var_os("HOME").expect("HOME must be set"))
         .join(".giong")
         .join("providers");

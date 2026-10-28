@@ -19,7 +19,7 @@ pub(crate) enum Language {
 impl Language {
     pub(crate) fn dockerfile(&self) -> &'static str {
         match self {
-            Self::Ts => "scriptc",
+            Self::Ts => "node",
         }
     }
 }

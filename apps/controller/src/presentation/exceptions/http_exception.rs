@@ -31,6 +31,8 @@ impl IntoResponse for HttpException {
             Self::Application(exception) => {
                 eprintln!("Application exception: {exception:?}");
                 match exception {
+                    Exception::NotFound(code) => (StatusCode::NOT_FOUND, code, None),
+                    Exception::Conflict(code) => (StatusCode::CONFLICT, code, None),
                     Exception::Authentication(AuthenticationException::InvalidCredentials) => {
                         (StatusCode::UNAUTHORIZED, "modules.auth.invalid_credentials", None)
                     }
