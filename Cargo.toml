@@ -1,5 +1,5 @@
 [workspace]
-members = ["packages/core", "packages/runner", "packages/scheduler", "packages/database", "packages/database/src/infrastructure/migrations", "packages/git", "packages/webhook", "packages/storage", "packages/publisher", "packages/di", "packages/di-macros", "apps/cli", "apps/controller"]
+members = ["packages/core", "packages/runner", "packages/scheduler", "packages/database", "packages/database/src/infrastructure/migrations", "packages/git", "packages/webhook", "packages/storage", "packages/publisher", "packages/di", "packages/di-macros", "apps/cli", "apps/controller", "packages/provider", "apps/reconciler"]
 resolver = "3"
 
 [workspace.package]

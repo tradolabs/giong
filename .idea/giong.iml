@@ -16,9 +16,11 @@
       <sourceFolder url="file://$MODULE_DIR$/packages/webhook/src" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/src" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/apps/controller/tests" isTestSource="true" />
+      <sourceFolder url="file://$MODULE_DIR$/apps/reconciler/src" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/packages/di-macros/src" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/packages/di/src" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/packages/di/tests" isTestSource="true" />
+      <sourceFolder url="file://$MODULE_DIR$/packages/provider/src" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/packages/publisher/src" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/packages/publisher/tests" isTestSource="true" />
       <sourceFolder url="file://$MODULE_DIR$/packages/queue/src" isTestSource="false" />
@@ -26,6 +28,11 @@
       <sourceFolder url="file://$MODULE_DIR$/packages/runner/src" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/packages/scheduler/src" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/packages/storage/tests" isTestSource="true" />
+      <sourceFolder url="file://$MODULE_DIR$/providers/cloudflare/r2/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/providers/cloudflare/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/providers/cloudflare/tests" isTestSource="true" />
+      <sourceFolder url="file://$MODULE_DIR$/providers/provider/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/providers/cloudflare/wasm/src" isTestSource="false" />
       <excludeFolder url="file://$MODULE_DIR$/target" />
     </content>
     <orderEntry type="inheritedJdk" />

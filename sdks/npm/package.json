@@ -1,0 +1,19 @@
+{
+  "name": "@giong/sdk",
+  "version": "0.1.0",
+  "type": "module",
+  "packageManager": "pnpm@11.0.5",
+  "files": [
+    "dist"
+  ],
+  "types": "./dist/index.d.ts",
+  "exports": "./dist/index.js",
+  "scripts": {
+    "build": "tsc",
+    "prepack": "pnpm build"
+  },
+  "devDependencies": {
+    "@types/node": "^22.20.4",
+    "typescript": "^5.7.2"
+  }
+}

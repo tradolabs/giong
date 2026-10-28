@@ -34,7 +34,18 @@ pub fn run_docker(
         return Ok(code);
     }
 
-    let result = run_command(Command::new("docker").args(["run", "--rm", image]), logger);
+    let result = run_command(
+        Command::new("docker").args([
+            "run",
+            "--rm",
+            "--network",
+            "giong",
+            "--env",
+            "GIONG_RECONCILER_URL=http://reconciler:2929",
+            image,
+        ]),
+        logger,
+    );
     let _ = run_command(Command::new("docker").args(["image", "rm", image]), logger);
     result
 }

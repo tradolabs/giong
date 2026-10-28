@@ -13,7 +13,7 @@ WORKDIR /src
 COPY Cargo.toml Cargo.lock ./
 COPY apps ./apps
 COPY packages ./packages
-RUN cargo build --locked --release -p giong-controller -p giong-cli
+RUN cargo build --locked --release -p giong-controller -p giong-cli -p giong-reconciler
 
 FROM debian:bookworm-slim
 RUN apt-get update \
@@ -23,9 +23,11 @@ COPY --from=docker-cli /usr/local/bin/docker /usr/local/bin/docker
 COPY --from=docker-cli /usr/local/libexec/docker/cli-plugins/docker-buildx /usr/local/libexec/docker/cli-plugins/docker-buildx
 COPY --from=builder /src/target/release/giong /usr/local/bin/giong
 COPY --from=builder /src/target/release/giong-controller /usr/local/bin/giong-controller
+COPY --from=builder /src/target/release/giong-reconciler /usr/local/bin/giong-reconciler
 COPY --from=console-builder /console/dist /usr/share/nginx/html
 COPY nginx.conf /etc/nginx/nginx.conf
 ENV HOME=/data
+ENV GIONG_PROVIDERS_DIR=/usr/local/lib/giong/providers
 RUN mkdir -p /data/.giong
 WORKDIR /data
 VOLUME ["/data/.giong"]

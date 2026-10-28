@@ -1,0 +1,12 @@
+[package]
+name = "giong-reconciler"
+version.workspace = true
+edition = "2024"
+
+[dependencies]
+anyhow.workspace = true
+giong-provider = { path = "../../packages/provider" }
+serde.workspace = true
+serde_json.workspace = true
+tokio = { workspace = true, features = ["net"] }
+axum = { version = "0.8", default-features = false, features = ["http1", "json", "tokio"] }
