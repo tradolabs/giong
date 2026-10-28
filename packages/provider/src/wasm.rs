@@ -69,7 +69,7 @@ impl giong::provider::host::Host for Host {
 
 pub(crate) fn setup() -> Result<(Engine, Linker<Host>), Error> {
     let mut config = Config::new();
-    config.async_support(true).wasm_component_model(true).consume_fuel(true);
+    config.wasm_component_model(true).consume_fuel(true);
     let engine = Engine::new(&config).map_err(Error::unexpected)?;
     let mut linker = Linker::new(&engine);
     wasmtime_wasi::p2::add_to_linker_async(&mut linker).map_err(Error::unexpected)?;
