@@ -1,50 +1,15 @@
-use axum::{Json, Router, extract::State, http::StatusCode, routing::post};
-use giong_provider::error::Error;
-use giong_provider::protocol;
+use crate::routes::reconcile;
+use axum::{Router, routing::post};
 use giong_provider::runtime::Runtime;
-use serde::{Deserialize, Serialize};
-use std::{sync::Arc, time::Duration};
+use std::sync::Arc;
 
-#[derive(Deserialize)]
-struct ReconcileRequest {
-    resources: Vec<protocol::Resource>,
-}
-
-#[derive(Default, Serialize)]
-struct ReconcileResponse {
-    created: Vec<protocol::Resource>,
-    unchanged: Vec<protocol::Resource>,
+#[derive(Clone)]
+pub(crate) struct AppState {
+    pub(crate) runtime: Arc<Runtime>,
 }
 
 pub fn router(runtime: Arc<Runtime>) -> Router {
-    Router::new().route("/reconcile", post(reconcile)).with_state(runtime)
-}
-
-async fn reconcile(
-    State(runtime): State<Arc<Runtime>>,
-    Json(input): Json<ReconcileRequest>,
-) -> Result<Json<ReconcileResponse>, (StatusCode, String)> {
-    let mut response = ReconcileResponse::default();
-    for mut resource in input.resources {
-        if let Some(config) = resource.config.as_object_mut() {
-            config.remove("type");
-        }
-        let created = tokio::time::timeout(Duration::from_secs(60), async {
-            let has_resource =
-                runtime.read(&resource.resource_type, &resource.config).await?.is_none();
-            if has_resource {
-                runtime.apply(&resource.resource_type, &resource.config, None).await?;
-            }
-            Ok::<_, Error>(has_resource)
-        })
-        .await
-        .map_err(|_| (StatusCode::GATEWAY_TIMEOUT, "Provider reconcile timed out".into()))?
-        .map_err(|error| (StatusCode::BAD_GATEWAY, error.to_string()))?;
-        if created {
-            response.created.push(resource);
-        } else {
-            response.unchanged.push(resource);
-        }
-    }
-    Ok(Json(response))
+    Router::new()
+        .route("/reconcile", post(reconcile::reconcile))
+        .with_state(AppState { runtime })
 }

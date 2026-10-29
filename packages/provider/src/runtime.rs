@@ -2,18 +2,19 @@ use crate::error::Error;
 use crate::oci;
 use crate::wasm::{self, Host, Provider};
 use serde_json::Value;
-use std::{collections::HashMap, path::PathBuf, time::Duration};
+use std::{collections::HashMap, path::PathBuf, sync::Arc, time::Duration};
 use tokio::sync::Mutex;
 use wasmtime::component::{Component, Linker};
 use wasmtime::{Engine, Store};
 
+#[derive(Clone)]
 pub struct Runtime {
     engine: Engine,
     linker: Linker<Host>,
     directory: PathBuf,
     registry: String,
     version: String,
-    components: Mutex<HashMap<String, Component>>,
+    components: Arc<Mutex<HashMap<String, Component>>>,
     client: reqwest::Client,
 }
 
@@ -26,7 +27,7 @@ impl Runtime {
             directory,
             registry: registry.into(),
             version: version.into(),
-            components: Mutex::new(HashMap::new()),
+            components: Arc::new(Mutex::new(HashMap::new())),
             client: reqwest::Client::builder()
                 .timeout(Duration::from_secs(30))
                 .build()
