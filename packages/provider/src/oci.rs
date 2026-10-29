@@ -45,7 +45,7 @@ pub(crate) async fn load(
     let (bytes, downloaded) = match tokio::fs::read(&path).await {
         Ok(bytes) => (bytes, false),
         Err(error) if error.kind() == std::io::ErrorKind::NotFound => {
-            let reference = format!("{}/{provider}/{resource}:{}", registry, version);
+            let reference = format!("{registry}/{provider}/{resource}:{version}");
             (download(&reference).await?, true)
         }
         Err(error) => {

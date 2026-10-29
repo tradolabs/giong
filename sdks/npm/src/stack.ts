@@ -25,7 +25,7 @@ export class Stack {
         const response = await fetch(`${this.reconcilerUrl}/reconcile`, {
             method: "POST",
             headers: {"content-type": "application/json"},
-            body: JSON.stringify(this.resources.map((item) => item.payload)),
+            body: JSON.stringify({resources: this.resources.map((item) => item.payload)}),
         });
         if (!response.ok) {
             throw new Error(`Reconciler returned ${response.status}: ${await response.text()}`);
