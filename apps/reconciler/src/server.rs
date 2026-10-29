@@ -12,15 +12,8 @@ struct ReconcileRequest {
 
 #[derive(Default, Serialize)]
 struct ReconcileResponse {
-    created: Vec<Resource>,
-    unchanged: Vec<Resource>,
-}
-
-#[derive(Serialize)]
-struct Resource {
-    #[serde(rename = "type")]
-    resource_type: String,
-    name: String,
+    created: Vec<protocol::Resource>,
+    unchanged: Vec<protocol::Resource>,
 }
 
 pub fn router(runtime: Arc<Runtime>) -> Router {
@@ -47,11 +40,10 @@ async fn reconcile(
         .await
         .map_err(|_| (StatusCode::GATEWAY_TIMEOUT, "Provider reconcile timed out".into()))?
         .map_err(|error| (StatusCode::BAD_GATEWAY, error.to_string()))?;
-        let entry = Resource { name: resource.name, resource_type: resource.resource_type };
         if created {
-            response.created.push(entry);
+            response.created.push(resource);
         } else {
-            response.unchanged.push(entry);
+            response.unchanged.push(resource);
         }
     }
     Ok(Json(response))

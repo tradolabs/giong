@@ -9,12 +9,10 @@ export abstract class ResourceConfig {
 export type Resource = {
     name: string;
     type: string;
-    config: ResourceConfig;
+    config: object;
 }
 
-export type ResourceDescriptor = Pick<Resource, 'name' | 'type'>;
-
 export interface ReconcileOutput {
-    created: ResourceDescriptor[];
-    unchanged: ResourceDescriptor[];
+    created: Resource[];
+    unchanged: Resource[];
 }
