@@ -5,7 +5,10 @@ edition = "2024"
 
 [dependencies]
 anyhow.workspace = true
+async-stream = "0.3"
 dotenvy = "0.15.7"
+giong-storage = { path = "../../packages/storage" }
+tempfile = "3"
 giong-provider = { path = "../../packages/provider" }
 serde.workspace = true
 serde_json.workspace = true

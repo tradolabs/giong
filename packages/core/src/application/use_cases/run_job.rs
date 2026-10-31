@@ -110,7 +110,13 @@ impl RunJobUseCase {
                     Self::checkout(&repo, &stack, &job, &checkout_path, encryption_key.as_deref())
                         .and_then(|dir| {
                             let image = format!("giong-image:{job_id}");
-                            giong_runner::run_docker(&image, &dir, &mut logger).map_err(Into::into)
+                            giong_runner::run_docker(
+                                &image,
+                                &stack.id.to_string(),
+                                &dir,
+                                &mut logger,
+                            )
+                            .map_err(Into::into)
                         });
                 if let Err(err) = &result {
                     let _ = writeln!(logger, "{err:#}");

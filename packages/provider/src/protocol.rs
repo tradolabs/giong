@@ -9,3 +9,10 @@ pub struct Resource {
     pub resource_type: String,
     pub config: Value,
 }
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ChangeStatus {
+    Created,
+    Updated,
+    Unchanged,
+}

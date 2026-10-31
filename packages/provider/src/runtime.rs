@@ -1,5 +1,7 @@
 use crate::error::Error;
 use crate::oci;
+use crate::protocol::ChangeStatus;
+use crate::wasm::exports::giong::provider::lifecycle::ChangeStatus as ProviderChangeStatus;
 use crate::wasm::{self, Host, Provider};
 use serde_json::Value;
 use std::{collections::HashMap, path::PathBuf, sync::Arc, time::Duration};
@@ -62,28 +64,26 @@ impl Runtime {
         Ok((store, bindings))
     }
 
-    pub async fn read(&self, resource_type: &str, config: &Value) -> Result<Option<Value>, Error> {
+    pub async fn read(&self, resource_type: &str, config: &Value) -> Result<ChangeStatus, Error> {
         let (mut store, bindings) = self.instantiate(resource_type).await?;
-        let state = bindings
+        let status = bindings
             .giong_provider_lifecycle()
             .call_read(&mut store, &config.to_string())
             .await
             .map_err(Error::unexpected)?
             .map_err(Error::Provider)?;
-        state.map(|state| serde_json::from_str(&state)).transpose().map_err(Error::unexpected)
+        Ok(match status {
+            ProviderChangeStatus::Created => ChangeStatus::Created,
+            ProviderChangeStatus::Updated => ChangeStatus::Updated,
+            ProviderChangeStatus::Unchanged => ChangeStatus::Unchanged,
+        })
     }
 
-    pub async fn apply(
-        &self,
-        resource_type: &str,
-        config: &Value,
-        current: Option<&Value>,
-    ) -> Result<Value, Error> {
+    pub async fn apply(&self, resource_type: &str, config: &Value) -> Result<Value, Error> {
         let (mut store, bindings) = self.instantiate(resource_type).await?;
-        let current = current.map(Value::to_string);
         let state = bindings
             .giong_provider_lifecycle()
-            .call_apply(&mut store, &config.to_string(), current.as_deref())
+            .call_apply(&mut store, &config.to_string())
             .await
             .map_err(Error::unexpected)?
             .map_err(Error::Provider)?;

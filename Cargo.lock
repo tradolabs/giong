@@ -1740,11 +1740,14 @@ name = "giong-reconciler"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "async-stream",
  "axum",
  "dotenvy",
  "giong-provider",
+ "giong-storage",
  "serde",
  "serde_json",
+ "tempfile",
  "tokio",
  "tower",
 ]

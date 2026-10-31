@@ -34,5 +34,6 @@ export type Resource = {
 
 export interface ReconcileOutput {
     created: Resource[];
+    updated: Resource[];
     unchanged: Resource[];
 }

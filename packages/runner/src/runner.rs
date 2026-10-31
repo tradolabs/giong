@@ -12,6 +12,7 @@ use crate::utils::process::run_command;
 
 pub fn run_docker(
     image: &str,
+    stack_id: &str,
     working_dir: &Path,
     logger: &mut File,
 ) -> Result<Option<i32>, Error> {
@@ -42,6 +43,8 @@ pub fn run_docker(
             "host.docker.internal:host-gateway",
             "--env",
             "GIONG_RECONCILER_URL=http://host.docker.internal:2929",
+            "--env",
+            &format!("GIONG_STACK_ID={stack_id}"),
             image,
         ]),
         logger,
