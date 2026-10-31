@@ -1,5 +1,6 @@
 import type { SignInOutput } from "../types/auth";
 import type { Job } from "../types/job";
+import type { Secret } from "../types/secret";
 import type { Stack } from "../types/stack";
 import { UnauthorizedError } from "./exception";
 import { getStoredToken, setStoredToken } from "./local-storage";
@@ -28,6 +29,9 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
     try {
       const data = await response.json();
       if (data?.message) message = data.message;
+      else if (data?.code === "modules.secret.already_exists") message = "A credential with this key already exists.";
+      else if (data?.code === "modules.secret.not_found") message = "This credential no longer exists. Reopen credentials to refresh the list.";
+      else if (data?.code === "modules.stack.not_found") message = "This stack no longer exists.";
     } catch {
       const text = await response.text().catch(() => "");
       if (text) message = text;
@@ -53,6 +57,30 @@ export async function signIn(username: string, password: string): Promise<SignIn
 
 export function fetchStacks(): Promise<Stack[]> {
   return request<Stack[]>("/stacks");
+}
+
+export function fetchSecrets(stackId: string): Promise<Secret[]> {
+  return request<Secret[]>(`/stacks/${encodeURIComponent(stackId)}/secrets`);
+}
+
+export function createSecret(stackId: string, key: string, value: string): Promise<Secret[]> {
+  return request<Secret[]>(`/stacks/${encodeURIComponent(stackId)}/secrets`, {
+    method: "POST",
+    body: JSON.stringify({ key, value }),
+  });
+}
+
+export function updateSecret(stackId: string, key: string, value: string): Promise<Secret[]> {
+  return request<Secret[]>(`/stacks/${encodeURIComponent(stackId)}/secrets/${encodeURIComponent(key)}`, {
+    method: "PUT",
+    body: JSON.stringify({ value }),
+  });
+}
+
+export function deleteSecret(stackId: string, key: string): Promise<Secret[]> {
+  return request<Secret[]>(`/stacks/${encodeURIComponent(stackId)}/secrets/${encodeURIComponent(key)}`, {
+    method: "DELETE",
+  });
 }
 
 export function fetchJobs(stackId: string): Promise<Job[]> {

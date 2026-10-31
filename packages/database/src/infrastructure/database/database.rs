@@ -3,8 +3,8 @@ use sea_orm::{DatabaseConnection, DbErr, TransactionTrait};
 use std::{ops::AsyncFnOnce, sync::Arc};
 
 use super::super::repositories::{
-    job::SeaOrmJobRepository, repository::SeaOrmRepositoryRepository, stack::SeaOrmStackRepository,
-    user::SeaOrmUserRepository,
+    job::SeaOrmJobRepository, repository::SeaOrmRepositoryRepository,
+    secret::SeaOrmSecretRepository, stack::SeaOrmStackRepository, user::SeaOrmUserRepository,
 };
 use super::{connection::Connection, transaction_context};
 
@@ -42,6 +42,7 @@ impl Database {
         crate::database::Database {
             repositories: Box::new(SeaOrmRepositoryRepository::new(self.clone())),
             stacks: Box::new(SeaOrmStackRepository::new(self.clone())),
+            secrets: Box::new(SeaOrmSecretRepository::new(self.clone())),
             jobs: Box::new(SeaOrmJobRepository::new(self.clone())),
             users: Box::new(SeaOrmUserRepository::new(self.clone())),
             database: self,

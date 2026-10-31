@@ -1,4 +1,5 @@
 use super::use_case::UseCase;
+use crate::application::services::secret_service::SecretService;
 use crate::{
     application::exceptions::base::Exception,
     application::helpers::crypto::decrypt_token,
@@ -7,9 +8,12 @@ use crate::{
 };
 use anyhow::{Context, Result};
 use chrono::Utc;
-use giong_database::{
-    Condition, Database, Document, JobEntity, JobStatus, RepositoryEntity, StackEntity, Uuid,
+use giong_database::Database;
+use giong_database::entities::{
+    job_entity::JobEntity, repository_entity::RepositoryEntity, stack_entity::StackEntity,
 };
+use giong_database::enums::job_status::JobStatus;
+use giong_database::repositories::types::{condition::Condition, document::Document};
 use giong_di::Injectable;
 use giong_storage::storage::Storage;
 use std::{
@@ -18,6 +22,7 @@ use std::{
     path::{Path, PathBuf},
     sync::Arc,
 };
+use uuid::Uuid;
 
 pub struct RunJobInput {
     pub job_id: Uuid,
@@ -25,6 +30,7 @@ pub struct RunJobInput {
 
 #[derive(Injectable)]
 pub struct RunJobUseCase {
+    secret_service: Arc<SecretService>,
     config: Arc<Config>,
     database: Arc<Database>,
     storage: Arc<Storage>,
@@ -101,6 +107,7 @@ impl RunJobUseCase {
         let checkout_path = root.join("runs").join(job_id.to_string());
         let log_path = root.join("logs").join(job_id.to_string());
         let encryption_key = self.config.encryption_key.clone();
+        let credentials = self.secret_service.get_credentials(stack.id).await;
 
         let result = tokio::task::spawn_blocking({
             let (checkout_path, log_path) = (checkout_path.clone(), log_path.clone());
@@ -109,10 +116,12 @@ impl RunJobUseCase {
                 let result =
                     Self::checkout(&repo, &stack, &job, &checkout_path, encryption_key.as_deref())
                         .and_then(|dir| {
+                            let credentials = credentials?;
                             let image = format!("giong-image:{job_id}");
                             giong_runner::run_docker(
                                 &image,
                                 &stack.id.to_string(),
+                                &credentials,
                                 &dir,
                                 &mut logger,
                             )

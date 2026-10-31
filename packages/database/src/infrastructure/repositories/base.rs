@@ -161,6 +161,21 @@ where
         Ok(result.rows_affected)
     }
 
+    async fn delete_one(&self, condition: Condition) -> Result<bool, Error> {
+        let mut query = E::delete_many();
+        for key in E::PrimaryKey::iter() {
+            let column = key.into_column();
+            let first = Self::query_find(condition.clone())?
+                .select_only()
+                .column(column)
+                .limit(1)
+                .into_query();
+            query = query.filter(column.in_subquery(first));
+        }
+        let result = query.exec(&self.connection()).await?;
+        Ok(result.rows_affected == 1)
+    }
+
     async fn find(&self, condition: Condition) -> Result<Vec<T>, Error> {
         let result = Self::query_find(condition)?.all(&self.connection()).await?;
         Ok(result.into_iter().map(Into::into).collect())

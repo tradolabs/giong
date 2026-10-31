@@ -1,6 +1,7 @@
 use crate::error::Error;
+use serde_json::Value;
 use wasmtime::component::{Linker, ResourceTable};
-use wasmtime::{Config, Engine, StoreLimits, StoreLimitsBuilder};
+use wasmtime::{Config, Engine};
 use wasmtime_wasi::{WasiCtx, WasiCtxBuilder, WasiCtxView, WasiView};
 
 wasmtime::component::bindgen!({
@@ -13,17 +14,12 @@ pub(crate) struct Host {
     table: ResourceTable,
     wasi: WasiCtx,
     client: reqwest::Client,
-    pub(crate) limits: StoreLimits,
+    inputs: Option<Value>,
 }
 
 impl Host {
-    pub(crate) fn new(client: reqwest::Client) -> Self {
-        Self {
-            table: ResourceTable::new(),
-            wasi: WasiCtxBuilder::new().build(),
-            client,
-            limits: StoreLimitsBuilder::new().memory_size(64 * 1024 * 1024).build(),
-        }
+    pub(crate) fn new(client: reqwest::Client, inputs: Option<Value>) -> Self {
+        Self { table: ResourceTable::new(), wasi: WasiCtxBuilder::new().build(), client, inputs }
     }
 }
 
@@ -35,7 +31,7 @@ impl WasiView for Host {
 
 impl giong::provider::host::Host for Host {
     async fn secret(&mut self, name: String) -> Option<String> {
-        std::env::var(name).ok()
+        self.inputs.as_ref()?.get(&name)?.as_str().map(str::to_owned)
     }
 
     async fn http(

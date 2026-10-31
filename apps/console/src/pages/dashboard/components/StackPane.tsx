@@ -5,14 +5,20 @@ interface StackPaneProps {
   stacks: Stack[];
   selectedStackId: string | null;
   onSelectStack: (id: string) => void;
+  onManageSecrets: (stack: Stack) => void;
 }
 
-export function StackPane({ stacks, selectedStackId, onSelectStack }: StackPaneProps) {
+export function StackPane({ stacks, selectedStackId, onSelectStack, onManageSecrets }: StackPaneProps) {
+  const selected = stacks.find((stack) => stack.id === selectedStackId);
   return (
     <section className="pane" aria-label="Stacks">
       <div className="pane-header">
         <h2 className="pane-title"><span className="pane-index" aria-hidden="true">01</span>Stacks</h2>
-        <span className="pane-count">{stacks.length}</span>
+        <div className="topbar-actions">
+          <span className="pane-count">{stacks.length}</span>
+          <button type="button" className="btn-ghost" disabled={!selected}
+            onClick={() => { if (selected) onManageSecrets(selected); }}>Credentials</button>
+        </div>
       </div>
       <div className="pane-body">
         {stacks.map((stack) => (

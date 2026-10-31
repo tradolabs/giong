@@ -1,9 +1,10 @@
 import {env} from "node:process";
-import {type ReconcileOutput, ResourceConfig, ResourceInput} from "./types.ts";
+import type {ReconcileInput, ReconcileOutput, Resource, Provider} from "./types.ts";
 import {readReconcileStream} from "./stream.ts";
 
 export class Stack {
-    private readonly resources: ResourceInput[] = [];
+    private readonly providers: Map<string, Provider> = new Map();
+    private readonly resources: Resource[] = [];
     private readonly reconcilerUrl: string;
     private readonly stackId: string;
 
@@ -23,19 +24,29 @@ export class Stack {
         this.stackId = stackId;
     }
 
-    add(name: string, config: ResourceConfig) {
-        const input = new ResourceInput(name, config);
-        if (this.resources.some(item => item.hashcode === input.hashcode)) {
-            throw new Error(`Duplicate resource name: ${name}`);
-        }
-        this.resources.push(input);
+    add(resource: Resource) {
+        this.providers.set(resource.provider.urn, resource.provider);
+        this.resources.push(resource);
     }
 
     async submit(): Promise<ReconcileOutput> {
+        const input: ReconcileInput = {
+            stackId: this.stackId,
+            providers: Array.from(this.providers.values()).map((provider) => ({
+                urn: provider.urn,
+                inputs: provider.inputs,
+            })),
+            resources: this.resources.map(resource => ({
+                name: resource.name,
+                package: resource.package,
+                provider: resource.provider.urn,
+                inputs: resource.inputs,
+            })),
+        };
         const response = await fetch(`${this.reconcilerUrl}/reconcile`, {
             method: "POST",
             headers: {"content-type": "application/json"},
-            body: JSON.stringify({stack_id: this.stackId, resources: this.resources.map((item) => item.payload)}),
+            body: JSON.stringify(input),
         });
         if (!response.ok) {
             throw new Error(`Reconciler returned ${response.status}: ${await response.text()}`);

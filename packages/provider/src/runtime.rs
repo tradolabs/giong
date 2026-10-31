@@ -37,10 +37,14 @@ impl Runtime {
         })
     }
 
-    async fn instantiate(&self, resource_type: &str) -> Result<(Store<Host>, Provider), Error> {
+    async fn instantiate(
+        &self,
+        package: &str,
+        secrets: Option<&Value>,
+    ) -> Result<(Store<Host>, Provider), Error> {
         let component = {
             let mut components = self.components.lock().await;
-            if let Some(component) = components.get(resource_type) {
+            if let Some(component) = components.get(package) {
                 component.clone()
             } else {
                 let component = oci::load(
@@ -48,15 +52,14 @@ impl Runtime {
                     &self.directory,
                     &self.registry,
                     &self.version,
-                    resource_type,
+                    package,
                 )
                 .await?;
-                components.insert(resource_type.into(), component.clone());
+                components.insert(package.into(), component.clone());
                 component
             }
         };
-        let mut store = Store::new(&self.engine, Host::new(self.client.clone()));
-        store.limiter(|host| &mut host.limits);
+        let mut store = Store::new(&self.engine, Host::new(self.client.clone(), secrets.cloned()));
         store.set_fuel(100_000_000).map_err(Error::unexpected)?;
         let bindings = Provider::instantiate_async(&mut store, &component, &self.linker)
             .await
@@ -64,11 +67,16 @@ impl Runtime {
         Ok((store, bindings))
     }
 
-    pub async fn read(&self, resource_type: &str, config: &Value) -> Result<ChangeStatus, Error> {
-        let (mut store, bindings) = self.instantiate(resource_type).await?;
+    pub async fn read(
+        &self,
+        package: &str,
+        inputs: &Value,
+        secrets: Option<&Value>,
+    ) -> Result<ChangeStatus, Error> {
+        let (mut store, bindings) = self.instantiate(package, secrets).await?;
         let status = bindings
             .giong_provider_lifecycle()
-            .call_read(&mut store, &config.to_string())
+            .call_read(&mut store, &inputs.to_string())
             .await
             .map_err(Error::unexpected)?
             .map_err(Error::Provider)?;
@@ -79,11 +87,16 @@ impl Runtime {
         })
     }
 
-    pub async fn apply(&self, resource_type: &str, config: &Value) -> Result<Value, Error> {
-        let (mut store, bindings) = self.instantiate(resource_type).await?;
+    pub async fn apply(
+        &self,
+        package: &str,
+        inputs: &Value,
+        secrets: Option<&Value>,
+    ) -> Result<Value, Error> {
+        let (mut store, bindings) = self.instantiate(package, secrets).await?;
         let state = bindings
             .giong_provider_lifecycle()
-            .call_apply(&mut store, &config.to_string())
+            .call_apply(&mut store, &inputs.to_string())
             .await
             .map_err(Error::unexpected)?
             .map_err(Error::Provider)?;

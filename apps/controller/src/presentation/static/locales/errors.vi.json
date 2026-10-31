@@ -21,6 +21,13 @@
       "invalid_payload": "Dữ liệu webhook không hợp lệ.",
       "service_unavailable": "Dịch vụ webhook hiện không khả dụng.",
       "queue_unavailable": "Hàng đợi webhook hiện không khả dụng."
+    },
+    "stack": {
+      "not_found": "Không tìm thấy stack."
+    },
+    "secret": {
+      "not_found": "Không tìm thấy credential.",
+      "already_exists": "Credential với key này đã tồn tại."
     }
   }
 }

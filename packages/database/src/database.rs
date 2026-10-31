@@ -4,14 +4,15 @@ use std::{ops::AsyncFnOnce, sync::Arc};
 use crate::{
     infrastructure::database::database::Database as Backend,
     repositories::{
-        job::JobRepository, repository::RepositoryRepository, stack::StackRepository,
-        user::UserRepository,
+        job::JobRepository, repository::RepositoryRepository, secret::SecretRepository,
+        stack::StackRepository, user::UserRepository,
     },
 };
 
 pub struct Database {
     pub repositories: Box<dyn RepositoryRepository>,
     pub stacks: Box<dyn StackRepository>,
+    pub secrets: Box<dyn SecretRepository>,
     pub jobs: Box<dyn JobRepository>,
     pub users: Box<dyn UserRepository>,
     pub(crate) database: Arc<Backend>,

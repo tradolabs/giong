@@ -1,39 +1,48 @@
-import {toSnakeCase} from "./utils.ts";
+export abstract class Component {
+    readonly name: string;
 
-export abstract class ResourceConfig {
-    abstract get type(): string;
-}
-
-export class ResourceInput {
-    name: string;
-    config: ResourceConfig;
-
-    constructor(name: string, config: ResourceConfig) {
+    constructor(name: string) {
         this.name = name;
-        this.config = config;
     }
 
-    get hashcode(): string {
-        return `${this.config.type}/${this.name}`;
+    get urn(): string {
+        return `${this.package}::${this.name}`;
     }
 
-    get payload(): Record<string, any> {
-        return {
-            name: this.name,
-            type: this.config.type,
-            config: toSnakeCase(this.config)
-        }
+    abstract get package(): string;
+
+    abstract get inputs(): Record<string, unknown>;
+}
+
+export abstract class Provider extends Component {
+}
+
+export abstract class Resource<T extends Provider = Provider> extends Component {
+    readonly provider: T;
+
+    constructor(name: string, provider: T) {
+        super(name);
+        this.provider = provider;
     }
 }
 
-export type Resource = {
+export type ReconcileInput = {
+    stackId: string;
+    providers: {
+        urn: string;
+        inputs: Record<string, unknown>;
+    }[];
+    resources: {
+        name: string;
+        package: string;
+        provider: string;
+        inputs: Record<string, unknown>;
+    }[];
+};
+
+export type ReconcileOutput = Record<"created" | "updated" | "unchanged", {
     name: string;
-    type: string;
-    config: object;
-}
-
-export interface ReconcileOutput {
-    created: Resource[];
-    updated: Resource[];
-    unchanged: Resource[];
-}
+    package: string;
+    provider?: string;
+    inputs: unknown;
+}[]>;

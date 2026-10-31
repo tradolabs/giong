@@ -2,18 +2,22 @@ use crate::application::exceptions::base::Exception;
 use crate::application::use_cases::{
     create_job::CreateJobUseCase,
     create_repository::{CreateRepositoryInput, CreateRepositoryUseCase},
+    create_secret::{CreateSecretInput, CreateSecretUseCase},
     create_stack::{CreateStackInput, CreateStackUseCase},
+    delete_secret::{DeleteSecretInput, DeleteSecretUseCase},
     get_job_logs::{GetJobLogsInput, GetJobLogsUseCase},
     get_jobs::{GetJobsInput, GetJobsUseCase},
+    get_secrets::{GetSecretsInput, GetSecretsUseCase},
     get_stacks::GetStacksUseCase,
     poll_repositories::PollRepositoriesUseCase,
     reset_admin_password::ResetAdminPasswordUseCase,
     run_job::{RunJobInput, RunJobUseCase},
     sign_in::{SignInInput, SignInOutput, SignInUseCase},
+    update_secret::{UpdateSecretInput, UpdateSecretUseCase},
     use_case::UseCase,
 };
 use crate::config::Config;
-use giong_database::{JobEntity, StackEntity};
+use giong_database::entities::{job_entity::JobEntity, stack_entity::StackEntity};
 use giong_di::Container;
 use std::sync::Arc;
 use uuid::Uuid;
@@ -114,6 +118,48 @@ impl Application {
 
     pub async fn get_stacks(&self) -> Result<Vec<StackEntity>, Exception> {
         self.container.get::<GetStacksUseCase>().map_err(Exception::unexpected)?.execute(()).await
+    }
+
+    pub async fn get_secrets(&self, stack_id: Uuid) -> Result<Vec<String>, Exception> {
+        self.container
+            .get::<GetSecretsUseCase>()
+            .map_err(Exception::unexpected)?
+            .execute(GetSecretsInput { stack_id })
+            .await
+    }
+
+    pub async fn create_secret(
+        &self,
+        stack_id: Uuid,
+        key: String,
+        value: String,
+    ) -> Result<(), Exception> {
+        self.container
+            .get::<CreateSecretUseCase>()
+            .map_err(Exception::unexpected)?
+            .execute(CreateSecretInput { stack_id, key, value })
+            .await
+    }
+
+    pub async fn update_secret(
+        &self,
+        stack_id: Uuid,
+        key: String,
+        value: String,
+    ) -> Result<(), Exception> {
+        self.container
+            .get::<UpdateSecretUseCase>()
+            .map_err(Exception::unexpected)?
+            .execute(UpdateSecretInput { stack_id, key, value })
+            .await
+    }
+
+    pub async fn delete_secret(&self, stack_id: Uuid, key: String) -> Result<(), Exception> {
+        self.container
+            .get::<DeleteSecretUseCase>()
+            .map_err(Exception::unexpected)?
+            .execute(DeleteSecretInput { stack_id, key })
+            .await
     }
 
     pub async fn get_jobs(&self, stack_id: Uuid) -> Result<Vec<JobEntity>, Exception> {

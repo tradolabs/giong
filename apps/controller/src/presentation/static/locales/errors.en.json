@@ -21,6 +21,13 @@
       "invalid_payload": "The webhook payload is invalid.",
       "service_unavailable": "The webhook service is unavailable.",
       "queue_unavailable": "The webhook queue is unavailable."
+    },
+    "stack": {
+      "not_found": "The stack was not found."
+    },
+    "secret": {
+      "not_found": "The credential was not found.",
+      "already_exists": "A credential with this key already exists."
     }
   }
 }

@@ -9,15 +9,6 @@ pub(crate) struct Snapshot {
     resources: Vec<Resource>,
 }
 
-pub(crate) fn storage_key(stack_id: &str) -> Option<String> {
-    if stack_id.is_empty()
-        || !stack_id.bytes().all(|byte| byte.is_ascii_alphanumeric() || matches!(byte, b'-' | b'_'))
-    {
-        return None;
-    }
-    Some(format!("snapshots/{stack_id}"))
-}
-
 impl Snapshot {
     pub(crate) async fn load(storage: &Storage, key: &str) -> anyhow::Result<Self> {
         match storage.download(key).await? {
@@ -37,11 +28,14 @@ impl Snapshot {
     pub(crate) fn insert(&mut self, resource: &Resource) {
         let snapshot = Resource {
             name: resource.name.clone(),
-            resource_type: resource.resource_type.clone(),
-            config: resource.config.clone(),
+            package: resource.package.clone(),
+            provider: resource.provider.clone(),
+            inputs: resource.inputs.clone(),
         };
         if let Some(existing) = self.resources.iter_mut().find(|existing| {
-            existing.resource_type == resource.resource_type && existing.name == resource.name
+            existing.package == resource.package
+                && existing.name == resource.name
+                && existing.provider == resource.provider
         }) {
             *existing = snapshot;
         } else {

@@ -1,15 +1,19 @@
 use crate::server::AppState;
-use crate::snapshot::{self, Snapshot};
+use crate::snapshot::Snapshot;
 use anyhow::Context;
 use axum::{Json, body::Body, extract::State, http::StatusCode, response::IntoResponse};
-use giong_provider::protocol::{ChangeStatus, Resource};
+use giong_provider::protocol::{ChangeStatus, Provider, Resource};
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 
 type RouteError = (StatusCode, String);
 
 #[derive(Deserialize)]
 pub(crate) struct ReconcileRequest {
+    #[serde(rename = "stackId", alias = "stack_id")]
     stack_id: String,
+    #[serde(default)]
+    providers: Vec<Provider>,
     resources: Vec<Resource>,
 }
 
@@ -42,27 +46,29 @@ pub(crate) async fn reconcile(
     State(state): State<AppState>,
     Json(input): Json<ReconcileRequest>,
 ) -> Result<impl IntoResponse, RouteError> {
-    let storage_blob = snapshot::storage_key(&input.stack_id)
-        .ok_or_else(|| (StatusCode::BAD_REQUEST, "Invalid stack_id".into()))?;
-
+    let providers: HashMap<_, _> =
+        input.providers.into_iter().map(|provider| (provider.urn.clone(), provider)).collect();
+    let storage_blob = format!("snapshots/{}", input.stack_id);
     let mut snapshot = Snapshot::load(&state.storage, &storage_blob)
         .await
         .map_err(|error| (StatusCode::BAD_GATEWAY, format!("Could not load snapshot: {error}")))?;
 
     let stream = async_stream::stream! {
         let mut response = ReconcileResponse::default();
-        for mut resource in input.resources {
-            let label = format!("Resource {:?} ({})", resource.name, resource.resource_type);
-            yield ReconcileEvent::Log(format!("Reconciling {label}")).encode();
+        for resource in input.resources {
+            let urn = resource.urn();
+            let secrets = resource.provider.as_ref()
+                .and_then(|id| providers.get(id)).map(|it| &it.inputs);
+            yield ReconcileEvent::Log(format!("Reconciling {urn}")).encode();
 
-            let change = match reconcile_and_save(&state, &mut snapshot, &storage_blob, &mut resource).await {
+            let change = match reconcile_and_save(&state, &mut snapshot, &storage_blob, &resource, secrets).await {
                 Ok(change) => change,
                 Err(error) => {
-                    yield ReconcileEvent::Error(format!("{label}: {error:#}")).encode();
+                    yield ReconcileEvent::Error(format!("{urn}: {error:#}")).encode();
                     return;
                 }
             };
-            yield ReconcileEvent::Log(format!("{label} {change:?}")).encode();
+            yield ReconcileEvent::Log(format!("{urn} {change:?}")).encode();
 
             match change {
                 ChangeStatus::Created => response.created.push(resource),
@@ -83,20 +89,18 @@ async fn reconcile_and_save(
     state: &AppState,
     snapshot: &mut Snapshot,
     key: &str,
-    resource: &mut Resource,
+    resource: &Resource,
+    secrets: Option<&serde_json::Value>,
 ) -> anyhow::Result<ChangeStatus> {
-    if let Some(config) = resource.config.as_object_mut() {
-        config.remove("type");
-    }
     let change = state
         .runtime
-        .read(&resource.resource_type, &resource.config)
+        .read(&resource.package, &resource.inputs, secrets)
         .await
         .context("read failed")?;
     if change != ChangeStatus::Unchanged {
         state
             .runtime
-            .apply(&resource.resource_type, &resource.config)
+            .apply(&resource.package, &resource.inputs, secrets)
             .await
             .context("apply failed")?;
     }

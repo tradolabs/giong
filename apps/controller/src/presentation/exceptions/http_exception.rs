@@ -24,13 +24,20 @@ impl IntoResponse for HttpException {
         struct ErrorBody {
             code: &'static str,
             #[serde(skip_serializing_if = "Option::is_none")]
+            message: Option<String>,
+            #[serde(skip_serializing_if = "Option::is_none")]
             errors: Option<HashMap<String, Vec<String>>>,
         }
 
+        let mut message = None;
         let (status, code, errors) = match self {
             Self::Application(exception) => {
                 eprintln!("Application exception: {exception:?}");
                 match exception {
+                    Exception::BadRequest(reason) => {
+                        message = Some(reason);
+                        (StatusCode::BAD_REQUEST, "http.bad_request", None)
+                    }
                     Exception::NotFound(code) => (StatusCode::NOT_FOUND, code, None),
                     Exception::Conflict(code) => (StatusCode::CONFLICT, code, None),
                     Exception::Authentication(AuthenticationException::InvalidCredentials) => {
@@ -47,7 +54,7 @@ impl IntoResponse for HttpException {
                 (StatusCode::INTERNAL_SERVER_ERROR, "http.internal_error", None)
             }
         };
-        (status, Json(ErrorBody { code, errors })).into_response()
+        (status, Json(ErrorBody { code, message, errors })).into_response()
     }
 }
 

@@ -1,12 +1,14 @@
 use crate::application::application::Application;
 use crate::application::helpers::filesystem::root_dir;
 use crate::application::ports::queue::queue_manager::QueueManager;
+use crate::application::services::secret_service::SecretService;
 use crate::application::use_cases::{
     create_job::CreateJobUseCase, create_repository::CreateRepositoryUseCase,
-    create_stack::CreateStackUseCase, get_job_logs::GetJobLogsUseCase, get_jobs::GetJobsUseCase,
-    get_stacks::GetStacksUseCase, poll_repositories::PollRepositoriesUseCase,
-    reset_admin_password::ResetAdminPasswordUseCase, run_job::RunJobUseCase,
-    sign_in::SignInUseCase,
+    create_secret::CreateSecretUseCase, create_stack::CreateStackUseCase,
+    delete_secret::DeleteSecretUseCase, get_job_logs::GetJobLogsUseCase, get_jobs::GetJobsUseCase,
+    get_secrets::GetSecretsUseCase, get_stacks::GetStacksUseCase,
+    poll_repositories::PollRepositoriesUseCase, reset_admin_password::ResetAdminPasswordUseCase,
+    run_job::RunJobUseCase, sign_in::SignInUseCase, update_secret::UpdateSecretUseCase,
 };
 use crate::config::Config;
 use crate::infrastructure::adapters::queue_manager::QueueManagerImpl;
@@ -39,6 +41,7 @@ pub async fn ensure_initialized(mut config: Config) -> anyhow::Result<Arc<Applic
         .register(database)
         .register(storage)
         .register(Arc::new(QueueManagerImpl::new(publisher.clone())) as Arc<dyn QueueManager>)
+        .register_type::<SecretService>()
         .register_type::<CreateRepositoryUseCase>()
         .register_type::<CreateStackUseCase>()
         .register_type::<GetJobLogsUseCase>()
@@ -48,6 +51,10 @@ pub async fn ensure_initialized(mut config: Config) -> anyhow::Result<Arc<Applic
         .register_type::<ResetAdminPasswordUseCase>()
         .register_type::<RunJobUseCase>()
         .register_type::<CreateJobUseCase>()
+        .register_type::<GetSecretsUseCase>()
+        .register_type::<CreateSecretUseCase>()
+        .register_type::<UpdateSecretUseCase>()
+        .register_type::<DeleteSecretUseCase>()
         .register_type::<SignInUseCase>();
 
     let container = Arc::new(container);

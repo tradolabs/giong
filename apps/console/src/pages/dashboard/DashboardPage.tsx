@@ -7,12 +7,14 @@ import type { Stack } from "../../types/stack";
 import { LogStreamPane } from "./components/LogStreamPane";
 import { JobsPane } from "./components/JobsPane";
 import { StackPane } from "./components/StackPane";
+import { SecretsDialog } from "./components/SecretsDialog";
 
 export function DashboardPage({ onSignOut }: { onSignOut: () => void }) {
   const [stacks, setStacks] = useState<Stack[]>([]);
   const [selectedStackId, setSelectedStackId] = useState<string | null>(null);
   const [jobs, setJobs] = useState<Job[]>([]);
   const [selectedJobId, setSelectedJobId] = useState<string | null>(null);
+  const [credentialsStack, setCredentialsStack] = useState<Stack | null>(null);
 
   useEffect(() => {
     let active = true;
@@ -94,6 +96,7 @@ export function DashboardPage({ onSignOut }: { onSignOut: () => void }) {
           stacks={stacks}
           selectedStackId={selectedStackId}
           onSelectStack={setSelectedStackId}
+          onManageSecrets={setCredentialsStack}
         />
         <JobsPane
           key={selectedStackId}
@@ -114,6 +117,8 @@ export function DashboardPage({ onSignOut }: { onSignOut: () => void }) {
           onSignOut={onSignOut}
         />
       </main>
+      {credentialsStack && <SecretsDialog key={credentialsStack.id} stack={credentialsStack}
+        onClose={() => setCredentialsStack(null)} onSignOut={onSignOut} />}
     </div>
   );
 }

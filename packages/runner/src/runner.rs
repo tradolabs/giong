@@ -3,6 +3,7 @@ use crate::error::Error;
 use include_dir::include_dir;
 use std::{
     fs::{self, File},
+    io::Write,
     path::Path,
     process::Command,
 };
@@ -13,6 +14,7 @@ use crate::utils::process::run_command;
 pub fn run_docker(
     image: &str,
     stack_id: &str,
+    credentials: &[(String, String)],
     working_dir: &Path,
     logger: &mut File,
 ) -> Result<Option<i32>, Error> {
@@ -35,10 +37,14 @@ pub fn run_docker(
         return Ok(code);
     }
 
+    let mut environment = tempfile::NamedTempFile::new()?;
+    for (key, value) in credentials {
+        writeln!(environment, "{key}={value}")?;
+    }
+    environment.flush()?;
+
     let result = run_command(
-        Command::new("docker").args([
-            "run",
-            "--rm",
+        Command::new("docker").args(["run", "--rm", "--env-file"]).arg(environment.path()).args([
             "--add-host",
             "host.docker.internal:host-gateway",
             "--env",

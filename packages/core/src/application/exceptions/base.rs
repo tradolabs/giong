@@ -3,6 +3,8 @@ use super::authentication::AuthenticationException;
 #[derive(Debug, thiserror::Error)]
 pub enum Exception {
     #[error("{0}")]
+    BadRequest(String),
+    #[error("{0}")]
     NotFound(&'static str),
     #[error("{0}")]
     Conflict(&'static str),

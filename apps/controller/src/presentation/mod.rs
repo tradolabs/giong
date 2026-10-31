@@ -48,6 +48,14 @@ pub async fn serve(application: Arc<Application>) -> anyhow::Result<()> {
             Router::new()
                 .route("/stacks", get(stacks::get_stacks))
                 .route("/stacks/{stack_id}/jobs", get(stacks::get_jobs).post(jobs::create_job))
+                .route(
+                    "/stacks/{stack_id}/secrets",
+                    get(stacks::get_secrets).post(stacks::create_secret),
+                )
+                .route(
+                    "/stacks/{stack_id}/secrets/{key}",
+                    axum::routing::put(stacks::update_secret).delete(stacks::delete_secret),
+                )
                 .route("/jobs/{job_id}/logs", get(jobs::get_job_logs))
                 .route_layer(middleware::from_fn_with_state(
                     state.clone(),
