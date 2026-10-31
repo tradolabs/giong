@@ -45,7 +45,8 @@ impl MigrationTrait for Migration {
                                 &["id"],
                             ))
                             .from("jobs", "stack_id")
-                            .to("stacks", "id"),
+                            .to("stacks", "id")
+                            .on_delete(ForeignKeyAction::Cascade),
                     )
                     .to_owned(),
             )

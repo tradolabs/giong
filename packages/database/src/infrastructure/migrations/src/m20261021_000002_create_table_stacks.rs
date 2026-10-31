@@ -30,17 +30,6 @@ impl MigrationTrait for Migration {
                             .not_null()
                             .default(Expr::current_timestamp()),
                     )
-                    .foreign_key(
-                        ForeignKey::create()
-                            .name(conventions::foreign_key_name(
-                                "stacks",
-                                &["repo_url"],
-                                "repositories",
-                                &["url"],
-                            ))
-                            .from("stacks", "repo_url")
-                            .to("repositories", "url"),
-                    )
                     .index(
                         Index::create()
                             .name(conventions::unique_constraint_name("stacks", &["name"]))

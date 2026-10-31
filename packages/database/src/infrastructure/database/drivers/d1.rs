@@ -16,6 +16,8 @@ pub(crate) struct D1 {
 struct Response {
     success: bool,
     #[serde(default)]
+    errors: Vec<Json>,
+    #[serde(default)]
     result: Vec<QueryResult>,
 }
 
@@ -71,22 +73,29 @@ impl D1 {
             .map(Self::bind_parameter)
             .collect::<Result<Vec<_>, DbErr>>()?;
 
-        let response: Response = self
+        let response = self
             .client
             .post(&self.endpoint)
             .bearer_auth(&self.token)
             .json(&json!({"sql": statement.sql,"params": params}))
             .send()
             .await
-            .map_err(|error| DbErr::Custom(format!("D1 request failed: {error}")))?
-            .error_for_status()
-            .map_err(|error| DbErr::Custom(format!("D1 returned an HTTP error: {error}")))?
+            .map_err(|error| DbErr::Custom(format!("D1 request failed: {error}")))?;
+        let status = response.status();
+        if !status.is_success() {
+            let body = response
+                .text()
+                .await
+                .map_err(|error| DbErr::Custom(format!("Could not read D1 error: {error}")))?;
+            return Err(DbErr::Custom(format!("D1 returned HTTP {status}: {body}")));
+        }
+        let response: Response = response
             .json()
             .await
             .map_err(|error| DbErr::Custom(format!("invalid D1 response: {error}")))?;
 
         if !response.success {
-            return Err(DbErr::Custom("d1 query failed".into()));
+            return Err(DbErr::Custom(format!("D1 query failed: {}", json!(response.errors))));
         }
 
         let result = response
