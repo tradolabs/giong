@@ -1,3 +1,4 @@
+use crate::infrastructure::repositories::secret_set::SeaOrmSecretSetRepository;
 use migrations::{Migrator, MigratorTrait};
 use sea_orm::{DatabaseConnection, DbErr, TransactionTrait};
 use std::{ops::AsyncFnOnce, sync::Arc};
@@ -42,6 +43,7 @@ impl Database {
         crate::database::Database {
             repositories: Box::new(SeaOrmRepositoryRepository::new(self.clone())),
             stacks: Box::new(SeaOrmStackRepository::new(self.clone())),
+            secret_sets: Box::new(SeaOrmSecretSetRepository::new(self.clone())),
             secrets: Box::new(SeaOrmSecretRepository::new(self.clone())),
             jobs: Box::new(SeaOrmJobRepository::new(self.clone())),
             users: Box::new(SeaOrmUserRepository::new(self.clone())),

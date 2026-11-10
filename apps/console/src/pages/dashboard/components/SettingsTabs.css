@@ -1,0 +1,15 @@
+.settings-tabs {
+  display: flex; gap: 24px; padding: 0 24px;
+  border-bottom: 1px solid var(--border-subtle);
+}
+.settings-tabs button {
+  padding: 14px 0 12px; border: 0; border-bottom: 2px solid transparent;
+  background: transparent; color: var(--text-secondary); font: inherit;
+  font-size: 13px; cursor: pointer;
+}
+.settings-tabs button[aria-selected="true"] {
+  border-bottom-color: var(--text-primary); color: var(--text-primary); font-weight: 600;
+}
+.settings-tabs button:focus-visible { outline: 2px solid var(--text-primary); outline-offset: 3px; }
+.settings-tabs button:disabled { cursor: default; opacity: .5; }
+@media (max-width: 520px) { .settings-tabs { padding: 0 16px; } }

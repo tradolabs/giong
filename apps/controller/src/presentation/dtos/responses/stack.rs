@@ -1,4 +1,4 @@
-use giong_core::StackEntity;
+use giong_database::entities::stack_entity::StackEntity;
 use serde::Serialize;
 use uuid::Uuid;
 
@@ -9,6 +9,7 @@ pub(in crate::presentation) struct StackResponseDto {
     pub repo_url: String,
     pub branch: String,
     pub folder_path: String,
+    pub inherited_secret_set_ids: serde_json::Value,
     pub last_commit: Option<String>,
     pub created_at: String,
     pub updated_at: String,
@@ -22,6 +23,7 @@ impl From<StackEntity> for StackResponseDto {
             repo_url: entity.repo_url,
             branch: entity.branch,
             folder_path: entity.folder_path,
+            inherited_secret_set_ids: entity.inherited_secret_set_ids,
             last_commit: entity.last_commit,
             created_at: entity.created_at,
             updated_at: entity.updated_at,

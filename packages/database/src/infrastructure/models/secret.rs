@@ -6,7 +6,7 @@ use uuid::Uuid;
 pub struct Model {
     #[sea_orm(primary_key, auto_increment = false)]
     pub id: Uuid,
-    pub stack_id: Uuid,
+    pub secret_set_id: Uuid,
     pub key: String,
     pub value: String,
     pub created_at: String,
@@ -16,11 +16,11 @@ pub struct Model {
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
 pub enum Relation {
     #[sea_orm(
-        belongs_to = "super::stack::Entity",
-        from = "Column::StackId",
-        to = "super::stack::Column::Id"
+        belongs_to = "super::secret_set::Entity",
+        from = "Column::SecretSetId",
+        to = "super::secret_set::Column::Id"
     )]
-    Stack,
+    SecretSet,
 }
 
 impl ActiveModelBehavior for ActiveModel {}
@@ -29,7 +29,7 @@ impl From<Model> for crate::entities::secret_entity::SecretEntity {
     fn from(model: Model) -> Self {
         Self {
             id: model.id,
-            stack_id: model.stack_id,
+            secret_set_id: model.secret_set_id,
             key: model.key,
             value: model.value,
             created_at: model.created_at,

@@ -3,6 +3,7 @@ use uuid::Uuid;
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum FieldValue {
     String(String),
+    Json(serde_json::Value),
     Uuid(Uuid),
     Integer(i64),
     Boolean(bool),
@@ -48,5 +49,11 @@ impl From<bool> for FieldValue {
 impl<T: Into<FieldValue>> From<Option<T>> for FieldValue {
     fn from(value: Option<T>) -> Self {
         value.map(Into::into).unwrap_or(Self::Null)
+    }
+}
+
+impl From<serde_json::Value> for FieldValue {
+    fn from(value: serde_json::Value) -> Self {
+        Self::Json(value)
     }
 }

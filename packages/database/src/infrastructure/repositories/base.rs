@@ -62,6 +62,7 @@ where
                 FieldValue::Null => match column.def().get_column_type() {
                     ColumnType::Integer => sea_orm::Value::Int(None),
                     ColumnType::BigInteger => sea_orm::Value::BigInt(None),
+                    ColumnType::Json | ColumnType::JsonBinary => sea_orm::Value::Json(None),
                     ColumnType::Uuid => sea_orm::Value::Uuid(None),
                     ColumnType::Boolean => sea_orm::Value::Bool(None),
                     _ => sea_orm::Value::String(None),
@@ -100,6 +101,7 @@ where
     fn to_value(value: FieldValue) -> sea_orm::Value {
         match value {
             FieldValue::String(value) => value.into(),
+            FieldValue::Json(value) => value.into(),
             FieldValue::Uuid(value) => value.into(),
             FieldValue::Integer(value) => value.into(),
             FieldValue::Boolean(value) => value.into(),

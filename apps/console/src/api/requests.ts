@@ -1,6 +1,8 @@
+import type { Repository } from "../types/repository";
+import type { Runner } from "../types/runner";
 import type { SignInOutput } from "../types/auth";
 import type { Job } from "../types/job";
-import type { Secret } from "../types/secret";
+import type { SecretSet, Secret } from "../types/secret";
 import type { Stack } from "../types/stack";
 import { UnauthorizedError } from "./exception";
 import { getStoredToken, setStoredToken } from "./local-storage";
@@ -29,8 +31,11 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
     try {
       const data = await response.json();
       if (data?.message) message = data.message;
-      else if (data?.code === "modules.secret.already_exists") message = "A credential with this key already exists.";
-      else if (data?.code === "modules.secret.not_found") message = "This credential no longer exists. Reopen credentials to refresh the list.";
+      else if (data?.code === "modules.secret.already_exists") message = "A secret with this key already exists.";
+      else if (data?.code === "modules.secret.not_found") message = "This secret no longer exists. Reopen secrets to refresh the list.";
+      else if (data?.code === "modules.stack.already_exists") message = "A stack with this name already exists.";
+      else if (data?.code === "modules.repository.already_exists") message = "This repository URL has already been added.";
+      else if (data?.code === "modules.repository.not_found") message = "This repository no longer exists. Refresh and select another repository.";
       else if (data?.code === "modules.stack.not_found") message = "This stack no longer exists.";
     } catch {
       const text = await response.text().catch(() => "");
@@ -95,4 +100,58 @@ export function fetchJobLogs(jobId: string, fromLines = 0): Promise<string> {
   return request<string>(
     `/jobs/${encodeURIComponent(jobId)}/logs?from_lines=${fromLines}`
   );
+}
+
+export function updateStack(stackId: string, settings: Partial<Pick<Stack, "repo_url" | "folder_path">>): Promise<Stack> {
+  return request<Stack>(`/stacks/${encodeURIComponent(stackId)}`, {
+    method: "PUT",
+    body: JSON.stringify(settings),
+  });
+}
+
+export function fetchRunners(): Promise<Runner[]> {
+  return request<Runner[]>("/runners");
+}
+
+export function fetchRepositories(): Promise<Repository[]> {
+  return request<Repository[]>("/repositories");
+}
+
+export function createRepository(name: string, url: string, token?: string): Promise<Repository> {
+  return request<Repository>("/repositories", { method: "POST", body: JSON.stringify({ name, url, token }) });
+}
+
+export function createStack(input: Pick<Stack, "name" | "repo_url" | "branch" | "folder_path">): Promise<Stack> {
+  return request<Stack>("/stacks", { method: "POST", body: JSON.stringify(input) });
+}
+
+export function fetchSecretSets(): Promise<SecretSet[]> {
+  return request<SecretSet[]>("/secret-sets");
+}
+export function createSecretSet(name: string): Promise<SecretSet> {
+  return request<SecretSet>("/secret-sets", { method: "POST", body: JSON.stringify({ name }) });
+}
+export function deleteSecretSet(id: string): Promise<void> {
+  return request<void>(`/secret-sets/${encodeURIComponent(id)}`, { method: "DELETE" });
+}
+export function fetchSetSecrets(id: string): Promise<Secret[]> {
+  return request<Secret[]>(`/secret-sets/${encodeURIComponent(id)}/secrets`);
+}
+export function createSetSecret(id: string, key: string, value: string): Promise<Secret[]> {
+  return request<Secret[]>(`/secret-sets/${encodeURIComponent(id)}/secrets`, {
+    method: "POST", body: JSON.stringify({ key, value }),
+  });
+}
+export function updateSetSecret(id: string, key: string, value: string): Promise<Secret[]> {
+  return request<Secret[]>(`/secret-sets/${encodeURIComponent(id)}/secrets/${encodeURIComponent(key)}`, {
+    method: "PUT", body: JSON.stringify({ value }),
+  });
+}
+export function deleteSetSecret(id: string, key: string): Promise<Secret[]> {
+  return request<Secret[]>(`/secret-sets/${encodeURIComponent(id)}/secrets/${encodeURIComponent(key)}`, { method: "DELETE" });
+}
+export function inheritSecretSets(id: string, inherited_secret_set_ids: string[]): Promise<Secret[]> {
+  return request<Secret[]>(`/stacks/${encodeURIComponent(id)}/secret-sets`, {
+    method: "PUT", body: JSON.stringify({ inherited_secret_set_ids }),
+  });
 }

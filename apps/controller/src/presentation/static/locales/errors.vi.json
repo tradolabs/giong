@@ -26,8 +26,8 @@
       "not_found": "Không tìm thấy stack."
     },
     "secret": {
-      "not_found": "Không tìm thấy credential.",
-      "already_exists": "Credential với key này đã tồn tại."
+      "not_found": "Không tìm thấy secret.",
+      "already_exists": "Secret với key này đã tồn tại."
     }
   }
 }

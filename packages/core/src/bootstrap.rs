@@ -6,9 +6,10 @@ use crate::application::use_cases::{
     create_job::CreateJobUseCase, create_repository::CreateRepositoryUseCase,
     create_secret::CreateSecretUseCase, create_stack::CreateStackUseCase,
     delete_secret::DeleteSecretUseCase, get_job_logs::GetJobLogsUseCase, get_jobs::GetJobsUseCase,
-    get_secrets::GetSecretsUseCase, get_stacks::GetStacksUseCase,
-    poll_repositories::PollRepositoriesUseCase, reset_admin_password::ResetAdminPasswordUseCase,
-    run_job::RunJobUseCase, sign_in::SignInUseCase, update_secret::UpdateSecretUseCase,
+    get_repositories::GetRepositoriesUseCase, get_secrets::GetSecretsUseCase,
+    get_stacks::GetStacksUseCase, poll_repositories::PollRepositoriesUseCase,
+    reset_admin_password::ResetAdminPasswordUseCase, run_job::RunJobUseCase,
+    sign_in::SignInUseCase, update_secret::UpdateSecretUseCase, update_stack::UpdateStackUseCase,
 };
 use crate::config::Config;
 use crate::infrastructure::adapters::queue_manager::QueueManagerImpl;
@@ -43,7 +44,9 @@ pub async fn ensure_initialized(mut config: Config) -> anyhow::Result<Arc<Applic
         .register(Arc::new(QueueManagerImpl::new(publisher.clone())) as Arc<dyn QueueManager>)
         .register_type::<SecretService>()
         .register_type::<CreateRepositoryUseCase>()
+        .register_type::<GetRepositoriesUseCase>()
         .register_type::<CreateStackUseCase>()
+        .register_type::<UpdateStackUseCase>()
         .register_type::<GetJobLogsUseCase>()
         .register_type::<GetJobsUseCase>()
         .register_type::<GetStacksUseCase>()

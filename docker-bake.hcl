@@ -3,7 +3,7 @@ group "default" {
 }
 
 group "apps" {
-  targets = ["cli", "controller", "reconciler", "console"]
+  targets = ["cli", "controller", "console"]
 }
 
 target "docker-metadata-action" {
@@ -38,18 +38,6 @@ target "controller" {
   tags = ["giong-controller:latest"]
 }
 
-target "reconciler-builder" {
-  inherits = ["_common"]
-  dockerfile = "apps/reconciler/Dockerfile"
-  target = "builder"
-}
-
-target "reconciler" {
-  inherits = ["reconciler-builder"]
-  target = "runtime"
-  tags = ["giong-reconciler:latest"]
-}
-
 target "console-builder" {
   inherits = ["_common"]
   dockerfile = "apps/console/Dockerfile"
@@ -68,7 +56,6 @@ target "giong" {
   contexts = {
     cli-builder = "target:cli-builder"
     controller-builder = "target:controller-builder"
-    reconciler-builder = "target:reconciler-builder"
     console-builder = "target:console-builder"
   }
 }

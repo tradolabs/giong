@@ -68,3 +68,39 @@ pub(in crate::presentation) async fn delete_secret(
     let secrets = application.get_secrets(stack_id).await?;
     Ok(Json(secrets.into_iter().map(SecretResponseDto::from).collect::<Vec<_>>()))
 }
+
+pub(in crate::presentation) async fn update_stack(
+    State(application): State<Arc<Application>>,
+    Path(stack_id): Path<Uuid>,
+    Json(input): Json<crate::presentation::dtos::requests::update_stack::UpdateStackRequestDto>,
+) -> Result<impl IntoResponse, HttpException> {
+    let stack = application
+        .update_stack(giong_core::application::use_cases::update_stack::UpdateStackInput {
+            stack_id,
+            repo_url: input.repo_url.map(|value| value.trim().to_owned()),
+            folder_path: input.folder_path.map(|value| value.trim().to_owned()),
+        })
+        .await?;
+    Ok(Json(StackResponseDto::from(stack)))
+}
+
+pub(in crate::presentation) async fn get_runners(
+    State(application): State<Arc<Application>>,
+) -> Result<impl IntoResponse, HttpException> {
+    Ok(Json(application.get_runners().await?))
+}
+
+pub(in crate::presentation) async fn create_stack(
+    State(application): State<Arc<Application>>,
+    Json(input): Json<crate::presentation::dtos::requests::create_stack::CreateStackRequestDto>,
+) -> Result<impl IntoResponse, HttpException> {
+    let stack = application
+        .create_stack(giong_core::application::use_cases::create_stack::CreateStackInput {
+            name: input.name.trim().to_owned(),
+            repo_url: input.repo_url.trim().to_owned(),
+            branch: input.branch.trim().to_owned(),
+            folder_path: input.folder_path.trim().to_owned(),
+        })
+        .await?;
+    Ok((StatusCode::CREATED, Json(StackResponseDto::from(stack))))
+}

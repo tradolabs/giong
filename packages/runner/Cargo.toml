@@ -6,7 +6,10 @@ description = "Run Giong pipelines in containers"
 
 [dependencies]
 thiserror.workspace = true
-serde.workspace = true
-toml = "1.1.8"
-include_dir = "0.7.4"
 tempfile = "3"
+serde_json.workspace = true
+toml = "1.1"
+anyhow.workspace = true
+serde.workspace = true
+wasmtime = { version = "50", default-features = false, features = ["cranelift", "runtime", "std", "component-model"] }
+wasmtime-wasi = { version = "50", default-features = false, features = ["p2"] }

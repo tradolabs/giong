@@ -107,7 +107,7 @@ impl RunJobUseCase {
         let checkout_path = root.join("runs").join(job_id.to_string());
         let log_path = root.join("logs").join(job_id.to_string());
         let encryption_key = self.config.encryption_key.clone();
-        let credentials = self.secret_service.get_credentials(stack.id).await;
+        let secrets = self.secret_service.get_run_secrets(stack.id).await;
 
         let result = tokio::task::spawn_blocking({
             let (checkout_path, log_path) = (checkout_path.clone(), log_path.clone());
@@ -116,12 +116,12 @@ impl RunJobUseCase {
                 let result =
                     Self::checkout(&repo, &stack, &job, &checkout_path, encryption_key.as_deref())
                         .and_then(|dir| {
-                            let credentials = credentials?;
-                            let image = format!("giong-image:{job_id}");
-                            giong_runner::run_docker(
-                                &image,
+                            let secrets = secrets?;
+                            giong_runner::run(
+                                &job_id.to_string(),
                                 &stack.id.to_string(),
-                                &credentials,
+                                &stack.name,
+                                &secrets,
                                 &dir,
                                 &mut logger,
                             )
@@ -176,6 +176,9 @@ impl RunJobUseCase {
         let working_dir = fs::canonicalize(&stack_path)
             .with_context(|| format!("Could not resolve stack folder {}", stack_path.display()))?;
 
+        if !working_dir.starts_with(fs::canonicalize(checkout_path)?) || !working_dir.is_dir() {
+            anyhow::bail!("Stack folder must be a directory inside the repository checkout");
+        }
         Ok(working_dir)
     }
 }

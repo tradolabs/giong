@@ -1,0 +1,28 @@
+package giong:runner@0.1.0;
+
+interface types {
+    record metadata {
+        id: string,
+        name: string,
+        version: string,
+        description: string,
+        configuration-schema: string,
+        defaults: string,
+    }
+
+    record docker-plan {
+        dockerfile: string,
+        dockerignore: option<string>,
+        args: list<string>,
+    }
+
+    variant plan {
+        docker(docker-plan),
+    }
+}
+
+world runner {
+    use types.{metadata as runner-metadata, plan as execution-plan};
+    export metadata: func() -> result<runner-metadata, string>;
+    export plan: func(stack-name: string, configurations: string) -> result<execution-plan, string>;
+}

@@ -1,60 +1,95 @@
-use crate::config::Config;
 use crate::error::Error;
-use include_dir::include_dir;
+use crate::plugins;
+use crate::types::{Plan, Secret};
+use crate::utils::process::run_command;
+use serde_json::Value;
 use std::{
     fs::{self, File},
-    io::Write,
     path::Path,
     process::Command,
 };
 
-use crate::utils::filesystem::copy_dir;
-use crate::utils::process::run_command;
-
-pub fn run_docker(
-    image: &str,
+pub fn run(
+    job_id: &str,
     stack_id: &str,
-    credentials: &[(String, String)],
+    stack_name: &str,
+    secrets: &[Secret],
     working_dir: &Path,
     logger: &mut File,
 ) -> Result<Option<i32>, Error> {
+    let configurations = load_configurations(working_dir)?;
+    let plan = plugins::plan(stack_name, &configurations)?;
+    match &plan {
+        Plan::Docker { dockerfile, dockerignore, args } => {
+            let image = format!("giong-image:{job_id}");
+            let code =
+                build_image(&image, dockerfile, dockerignore.as_deref(), working_dir, logger)?;
+            if code != Some(0) {
+                return Ok(code);
+            }
+
+            let result = run_container(&image, stack_id, args, secrets, logger);
+            let _ = run_command(Command::new("docker").args(["image", "rm", &image]), logger);
+            result
+        }
+    }
+}
+
+fn load_configurations(working_dir: &Path) -> Result<Value, Error> {
     let config_path = working_dir.join("giong.toml");
-    let content = fs::read_to_string(&config_path)
-        .map_err(|source| Error::ConfigRead { path: config_path, source })?;
-    let config: Config = toml::from_str(&content)?;
-    let dockerfile = config.toolchain.language.dockerfile();
-    let dir = include_dir!("$CARGO_MANIFEST_DIR/dockerfiles")
-        .get_dir(dockerfile)
-        .ok_or_else(|| Error::DockerfileNotFound(dockerfile.to_owned()))?;
+    let contents = fs::read_to_string(&config_path).map_err(|error| {
+        Error::Unexpected(format!("Could not read {}: {error}", config_path.display()))
+    })?;
+    toml::from_str(&contents).map_err(|error| {
+        Error::Unexpected(format!("Could not parse {}: {error}", config_path.display()))
+    })
+}
 
-    copy_dir(dir, working_dir).map_err(|error| Error::TemplateCopy(Box::new(error)))?;
-
-    let code = run_command(
-        Command::new("docker").args(["build", "--tag", image, "."]).current_dir(working_dir),
+fn build_image(
+    image: &str,
+    dockerfile_content: &str,
+    dockerignore_content: Option<&str>,
+    working_dir: &Path,
+    logger: &mut File,
+) -> Result<Option<i32>, Error> {
+    let context = fs::canonicalize(working_dir)?;
+    if !context.is_dir() {
+        return Err(Error::Unexpected(
+            "Stack folder must be a directory within the repository checkout".into(),
+        ));
+    }
+    let build_files = tempfile::tempdir()?;
+    let dockerfile = build_files.path().join("Dockerfile");
+    fs::write(&dockerfile, dockerfile_content)?;
+    if let Some(ignore) = dockerignore_content {
+        fs::write(build_files.path().join("Dockerfile.dockerignore"), ignore)?;
+    }
+    run_command(
+        Command::new("docker")
+            .args(["build", "--tag", image, "--file"])
+            .arg(&dockerfile)
+            .arg(".")
+            .current_dir(&context),
         logger,
-    )?;
-    if code != Some(0) {
-        return Ok(code);
+    )
+}
+
+fn run_container(
+    image: &str,
+    stack_id: &str,
+    args: &[String],
+    secrets: &[Secret],
+    logger: &mut File,
+) -> Result<Option<i32>, Error> {
+    let mut command = Command::new("docker");
+    command.args(["run", "--rm"]).args(["--add-host", "host.docker.internal:host-gateway"]);
+
+    for secret in secrets {
+        command.arg("--env").arg(&secret.key).env(&secret.key, &secret.value);
     }
 
-    let mut environment = tempfile::NamedTempFile::new()?;
-    for (key, value) in credentials {
-        writeln!(environment, "{key}={value}")?;
-    }
-    environment.flush()?;
-
-    let result = run_command(
-        Command::new("docker").args(["run", "--rm", "--env-file"]).arg(environment.path()).args([
-            "--add-host",
-            "host.docker.internal:host-gateway",
-            "--env",
-            "GIONG_RECONCILER_URL=http://host.docker.internal:2929",
-            "--env",
-            &format!("GIONG_STACK_ID={stack_id}"),
-            image,
-        ]),
+    run_command(
+        command.arg("--env").arg(format!("GIONG_STACK_ID={stack_id}")).arg(image).args(args),
         logger,
-    );
-    let _ = run_command(Command::new("docker").args(["image", "rm", image]), logger);
-    result
+    )
 }

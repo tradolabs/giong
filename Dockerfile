@@ -8,11 +8,11 @@ COPY --from=docker-cli /usr/local/bin/docker /usr/local/bin/docker
 COPY --from=docker-cli /usr/local/libexec/docker/cli-plugins/docker-buildx /usr/local/libexec/docker/cli-plugins/docker-buildx
 COPY --from=cli-builder /out/giong /usr/local/bin/giong
 COPY --from=controller-builder /out/giong-controller /usr/local/bin/giong-controller
-COPY --from=reconciler-builder /out/giong-reconciler /usr/local/bin/giong-reconciler
 COPY --from=console-builder /out /usr/share/nginx/html
 COPY nginx.conf /etc/nginx/nginx.conf
+COPY --from=controller-builder /out/runners /usr/local/lib/giong/runners
+ENV GIONG_RUNNERS_DIR=/usr/local/lib/giong/runners
 ENV HOME=/data
-ENV GIONG_PROVIDERS_DIR=/usr/local/lib/giong/providers
 WORKDIR /data
 VOLUME ["/data/.giong"]
 EXPOSE 80

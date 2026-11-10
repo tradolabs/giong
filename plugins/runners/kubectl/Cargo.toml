@@ -1,0 +1,12 @@
+[package]
+name = "giong-kubectl-runner"
+version.workspace = true
+edition = "2024"
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+wit-bindgen = "0.63.0"
+serde.workspace = true
+serde_json.workspace = true

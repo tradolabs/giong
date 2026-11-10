@@ -1,5 +1,5 @@
 import "./DashboardPage.css";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { UnauthorizedError } from "../../api/exception";
 import { fetchJobs, fetchStacks } from "../../api/requests";
 import type { Job } from "../../types/job";
@@ -7,22 +7,30 @@ import type { Stack } from "../../types/stack";
 import { LogStreamPane } from "./components/LogStreamPane";
 import { JobsPane } from "./components/JobsPane";
 import { StackPane } from "./components/StackPane";
-import { SecretsDialog } from "./components/SecretsDialog";
+import { StackSettingsDialog } from "./components/StackSettingsDialog";
+import { AddStackDialog } from "./components/AddStackDialog";
+import { RepositorySettingsDialog } from "./components/RepositorySettingsDialog";
 
 export function DashboardPage({ onSignOut }: { onSignOut: () => void }) {
+  const stackRevision = useRef(0);
+  const [addingStack, setAddingStack] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
+  const [newRepositoryUrl, setNewRepositoryUrl] = useState<string | null>(null);
   const [stacks, setStacks] = useState<Stack[]>([]);
   const [selectedStackId, setSelectedStackId] = useState<string | null>(null);
   const [jobs, setJobs] = useState<Job[]>([]);
   const [selectedJobId, setSelectedJobId] = useState<string | null>(null);
-  const [credentialsStack, setCredentialsStack] = useState<Stack | null>(null);
+  const [settingsStack, setSettingsStack] = useState<Stack | null>(null);
+  const [settingsTab, setSettingsTab] = useState<"general" | "secrets">("general");
 
   useEffect(() => {
     let active = true;
 
     async function loadStacks() {
       try {
+        const revision = stackRevision.current;
         const data = await fetchStacks();
-        if (!active) return;
+        if (!active || revision !== stackRevision.current) return;
         setStacks(data);
         setSelectedStackId((current) => {
           if (current && data.some((s) => s.id === current)) return current;
@@ -85,6 +93,7 @@ export function DashboardPage({ onSignOut }: { onSignOut: () => void }) {
           <span className="topbar-context">CI/CD</span>
         </div>
         <div className="topbar-actions">
+          <button className="btn-ghost" type="button" onClick={() => setShowSettings(true)}>Settings</button>
           <button className="btn-ghost" type="button" onClick={onSignOut}>
             Sign out
           </button>
@@ -96,7 +105,8 @@ export function DashboardPage({ onSignOut }: { onSignOut: () => void }) {
           stacks={stacks}
           selectedStackId={selectedStackId}
           onSelectStack={setSelectedStackId}
-          onManageSecrets={setCredentialsStack}
+          onSettings={(stack) => { setSettingsTab("general"); setSettingsStack(stack); }}
+          onAddStack={() => setAddingStack(true)}
         />
         <JobsPane
           key={selectedStackId}
@@ -117,8 +127,25 @@ export function DashboardPage({ onSignOut }: { onSignOut: () => void }) {
           onSignOut={onSignOut}
         />
       </main>
-      {credentialsStack && <SecretsDialog key={credentialsStack.id} stack={credentialsStack}
-        onClose={() => setCredentialsStack(null)} onSignOut={onSignOut} />}
+      {addingStack && <AddStackDialog onClose={() => setAddingStack(false)} onSignOut={onSignOut}
+        onManageRepositories={() => setShowSettings(true)} newRepositoryUrl={newRepositoryUrl}
+        onCreated={(stack) => {
+          stackRevision.current += 1;
+          setStacks((current) => [stack, ...current.filter((item) => item.id !== stack.id)]);
+          setSelectedStackId(stack.id);
+          setSettingsTab("secrets");
+          setSettingsStack(stack);
+          setSelectedJobId(null);
+        }} />}
+      {showSettings && <RepositorySettingsDialog onClose={() => setShowSettings(false)} onSignOut={onSignOut}
+        onAdded={(repository) => { setNewRepositoryUrl(repository.url); if (addingStack) setShowSettings(false); }} />}
+      {settingsStack && <StackSettingsDialog key={settingsStack.id} stack={settingsStack} initialTab={settingsTab}
+        onClose={() => setSettingsStack(null)} onSignOut={onSignOut}
+        onSaved={(updated) => {
+          stackRevision.current += 1;
+          setStacks((current) => current.map((stack) => stack.id === updated.id ? updated : stack));
+          setSettingsStack(updated);
+        }} />}
     </div>
   );
 }

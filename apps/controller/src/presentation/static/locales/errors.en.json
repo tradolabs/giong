@@ -26,8 +26,8 @@
       "not_found": "The stack was not found."
     },
     "secret": {
-      "not_found": "The credential was not found.",
-      "already_exists": "A credential with this key already exists."
+      "not_found": "The secret was not found.",
+      "already_exists": "A secret with this key already exists."
     }
   }
 }

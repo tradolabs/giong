@@ -1,4 +1,6 @@
 use clap::Parser;
+use giong_core::application::use_cases::create_repository::CreateRepositoryInput;
+use giong_core::application::use_cases::create_stack::CreateStackInput;
 use giong_core::config::Config;
 
 mod command;
@@ -25,11 +27,20 @@ async fn main() -> anyhow::Result<()> {
         }
         Command::Add(resource) => match resource {
             AddResource::Repository { name, url, token } => {
-                application.add_repo(&name, &url, token.as_deref()).await?;
+                application
+                    .create_repository(CreateRepositoryInput { name: name.clone(), url, token })
+                    .await?;
                 println!("Added repository {name}");
             }
             AddResource::Stack { name, repo_url, branch, folder_path } => {
-                application.add_stack(&name, &repo_url, &branch, &folder_path).await?;
+                application
+                    .create_stack(CreateStackInput {
+                        name: name.clone(),
+                        repo_url,
+                        branch,
+                        folder_path,
+                    })
+                    .await?;
                 println!("Added stack {name}");
             }
         },

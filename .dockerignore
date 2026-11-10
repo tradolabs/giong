@@ -5,6 +5,8 @@
 !apps/**
 !packages/
 !packages/**
+!plugins/
+!plugins/**
 !nginx.conf
 **/node_modules
 **/dist

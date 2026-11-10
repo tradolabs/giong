@@ -1,4 +1,5 @@
-use self::controllers::{auth as auth_controller, index, jobs, stacks, webhook};
+use self::controllers::secret_sets;
+use self::controllers::{auth as auth_controller, index, jobs, repositories, stacks, webhook};
 use axum::{
     Router,
     extract::{DefaultBodyLimit, FromRef},
@@ -46,7 +47,25 @@ pub async fn serve(application: Arc<Application>) -> anyhow::Result<()> {
         .route("/auth/sign-in", post(auth_controller::sign_in))
         .merge(
             Router::new()
-                .route("/stacks", get(stacks::get_stacks))
+                .route("/secret-sets", get(secret_sets::list).post(secret_sets::create))
+                .route("/secret-sets/{id}", axum::routing::delete(secret_sets::delete))
+                .route(
+                    "/secret-sets/{id}/secrets",
+                    get(secret_sets::secrets).post(secret_sets::create_secret),
+                )
+                .route(
+                    "/secret-sets/{id}/secrets/{key}",
+                    axum::routing::put(secret_sets::update_secret)
+                        .delete(secret_sets::delete_secret),
+                )
+                .route("/stacks/{id}/secret-sets", axum::routing::put(secret_sets::inherit))
+                .route("/runners", get(stacks::get_runners))
+                .route("/stacks", get(stacks::get_stacks).post(stacks::create_stack))
+                .route(
+                    "/repositories",
+                    get(repositories::get_repositories).post(repositories::create_repository),
+                )
+                .route("/stacks/{stack_id}", axum::routing::put(stacks::update_stack))
                 .route("/stacks/{stack_id}/jobs", get(stacks::get_jobs).post(jobs::create_job))
                 .route(
                     "/stacks/{stack_id}/secrets",

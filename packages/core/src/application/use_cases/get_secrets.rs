@@ -1,7 +1,6 @@
 use super::use_case::UseCase;
 use crate::application::exceptions::base::Exception;
-use giong_database::Database;
-use giong_database::repositories::types::condition::Condition;
+use crate::application::services::secret_service::{SecretInfo, SecretScope, SecretService};
 use giong_di::Injectable;
 use std::sync::Arc;
 use uuid::Uuid;
@@ -9,29 +8,14 @@ use uuid::Uuid;
 pub struct GetSecretsInput {
     pub stack_id: Uuid,
 }
-
 #[derive(Injectable)]
 pub struct GetSecretsUseCase {
-    database: Arc<Database>,
+    secret_service: Arc<SecretService>,
 }
-
 impl UseCase for GetSecretsUseCase {
     type Input = GetSecretsInput;
-    type Output = Vec<String>;
-
+    type Output = Vec<SecretInfo>;
     async fn execute(&self, input: Self::Input) -> Result<Self::Output, Exception> {
-        if !self.database.stacks.exists(Condition::new().eq("id", input.stack_id)).await? {
-            return Err(Exception::NotFound("modules.stack.not_found"));
-        }
-        let mut keys: Vec<_> = self
-            .database
-            .secrets
-            .find(Condition::new().eq("stack_id", input.stack_id))
-            .await?
-            .into_iter()
-            .map(|secret| secret.key)
-            .collect();
-        keys.sort();
-        Ok(keys)
+        self.secret_service.list_secrets(SecretScope::Stack(input.stack_id)).await
     }
 }

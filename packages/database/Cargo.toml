@@ -6,7 +6,7 @@ description = "Database abstraction with SQLite and Cloudflare D1 storage for Gi
 
 [dependencies]
 migrations = { path = "src/infrastructure/migrations" }
-sea-orm = { version = "2.0.4", default-features = false, features = ["macros", "sqlx-sqlite", "runtime-tokio", "with-uuid", "proxy"] }
+sea-orm = { version = "2.0.4", default-features = false, features = ["macros", "sqlx-sqlite", "runtime-tokio", "with-uuid", "with-json", "proxy"] }
 reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }
 serde.workspace = true
 serde_json.workspace = true

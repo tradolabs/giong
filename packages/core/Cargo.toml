@@ -23,3 +23,5 @@ serde.workspace = true
 chrono = { version = "0.4", default-features = false, features = ["clock"] }
 thiserror.workspace = true
 getrandom = "0.4"
+serde_json.workspace = true
+url = "2"

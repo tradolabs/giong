@@ -5,13 +5,14 @@ use crate::{
     infrastructure::database::database::Database as Backend,
     repositories::{
         job::JobRepository, repository::RepositoryRepository, secret::SecretRepository,
-        stack::StackRepository, user::UserRepository,
+        secret_set::SecretSetRepository, stack::StackRepository, user::UserRepository,
     },
 };
 
 pub struct Database {
     pub repositories: Box<dyn RepositoryRepository>,
     pub stacks: Box<dyn StackRepository>,
+    pub secret_sets: Box<dyn SecretSetRepository>,
     pub secrets: Box<dyn SecretRepository>,
     pub jobs: Box<dyn JobRepository>,
     pub users: Box<dyn UserRepository>,
