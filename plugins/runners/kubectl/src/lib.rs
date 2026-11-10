@@ -12,28 +12,54 @@ use serde_json::json;
 struct Configurations {
     namespace: Option<String>,
     release: Option<String>,
-    helm_folder: Option<String>,
     values_file: Option<String>,
+    source: Sources,
+}
+
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct Source {
+    repo_url: String,
+    #[serde(rename = "revision")]
+    _revision: Option<String>,
+    path: String,
+}
+
+#[derive(Deserialize)]
+#[serde(untagged)]
+enum Sources {
+    One(Source),
+    Many(Vec<Source>),
 }
 
 struct KubectlRunner;
 
 impl Guest for KubectlRunner {
     fn metadata() -> Result<Metadata, String> {
+        let source_schema = json!({
+            "type": "object", "additionalProperties": false,
+            "required": ["repo_url", "path"],
+            "description": "Chart source with repo_url, revision and path; credentials come from the host. May also be a list of sources.",
+            "properties": {
+                "repo_url": { "type": "string", "title": "Repository URL" },
+                "revision": { "type": "string", "default": "HEAD" },
+                "path": { "type": "string", "title": "Chart path", "description": "Chart folder relative to the source repository root" }
+            }
+        });
         Ok(Metadata {
             id: "kubectl".into(),
             name: "kubectl".into(),
             version: env!("CARGO_PKG_VERSION").into(),
             description:
                 "Renders a Helm chart and applies it with kubectl. Set up Kubernetes access in Secrets.".into(),
-            defaults: json!({ "helm_folder": "helm" }).to_string(),
+            defaults: json!({}).to_string(),
             configuration_schema: json!({
-                "type": "object", "additionalProperties": false,
+                "type": "object", "additionalProperties": false, "required": ["source"],
                 "properties": {
-                    "helm_folder": { "type": "string", "title": "Helm folder", "default": "helm", "description": "Chart folder relative to the stack folder; use . for the stack folder itself" },
+                    "source": { "oneOf": [source_schema.clone(), {"type": "array", "minItems": 1, "items": source_schema}] },
                     "namespace": { "type": "string", "title": "Namespace" },
                     "release": { "type": "string", "title": "Release name (Defaults to the stack name)" },
-                    "values_file": { "type": "string", "minLength": 1, "title": "Values file", "description": "Optional path relative to the stack folder, for example values.production.yaml" }
+                    "values_file": { "type": "string", "minLength": 1, "title": "Values file", "description": "Optional values file relative to each chart folder" }
                 }
             }).to_string(),
         })
@@ -44,16 +70,20 @@ impl Guest for KubectlRunner {
             serde_json::from_str(&configurations).map_err(|error| error.to_string())?;
         let release = config.release.as_deref().unwrap_or(&stack_name);
         let namespace = config.namespace.as_deref().unwrap_or("default");
-        let helm_folder = config.helm_folder.as_deref().unwrap_or("helm");
-        let mut args = vec![
-            release.into(),
-            format!("/workspace/{helm_folder}"),
-            "--namespace".into(),
-            namespace.into(),
-            "--no-hooks".into(),
-        ];
-        if let Some(values_file) = config.values_file {
-            args.extend(["--values".into(), format!("/workspace/{values_file}")]);
+        let sources = match config.source {
+            Sources::One(source) => vec![source],
+            Sources::Many(sources) => sources,
+        };
+        if sources.is_empty() {
+            return Err("At least one source is required".into());
+        }
+        let mut args =
+            vec![release.into(), namespace.into(), config.values_file.unwrap_or_default()];
+        for (index, source) in sources.iter().enumerate() {
+            if source.repo_url.trim().is_empty() || source.path.trim().is_empty() {
+                return Err("source.repo_url and source.path are required".into());
+            }
+            args.push(format!("/workspace/source-{index}/{}", source.path));
         }
         Ok(Plan::Docker(DockerPlan {
             dockerfile: include_str!("../Dockerfile").into(),

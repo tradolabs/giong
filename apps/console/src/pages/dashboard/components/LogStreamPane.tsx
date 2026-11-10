@@ -89,7 +89,7 @@ export function LogStreamPane({
           <p className="log-label"><span className="pane-index" aria-hidden="true">03</span>Execution logs</p>
           <div className="log-meta">
             <strong>{stack?.name ?? "Job"}</strong>
-            <span className="mono">#{shortSha(job.commit_sha)}</span>
+            <span className="mono">#{shortSha(job.id)}</span>
             <StatusBadge status={job.status} />
             {job.exit_code !== null && <span className="mono">exit {job.exit_code}</span>}
           </div>

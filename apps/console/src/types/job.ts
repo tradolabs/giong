@@ -3,7 +3,6 @@ export type JobStatus = "pending" | "running" | "succeeded" | "failed" | "interr
 export interface Job {
   id: string;
   stack_id: string;
-  commit_sha: string;
   status: JobStatus;
   started_at: string;
   finished_at: string | null;

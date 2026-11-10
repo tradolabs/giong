@@ -2,6 +2,7 @@ use crate::application::application::Application;
 use crate::application::helpers::filesystem::root_dir;
 use crate::application::ports::queue::queue_manager::QueueManager;
 use crate::application::services::secret_service::SecretService;
+use crate::application::services::stack_service::StackService;
 use crate::application::use_cases::{
     create_job::CreateJobUseCase, create_repository::CreateRepositoryUseCase,
     create_secret::CreateSecretUseCase, create_stack::CreateStackUseCase,
@@ -43,6 +44,7 @@ pub async fn ensure_initialized(mut config: Config) -> anyhow::Result<Arc<Applic
         .register(storage)
         .register(Arc::new(QueueManagerImpl::new(publisher.clone())) as Arc<dyn QueueManager>)
         .register_type::<SecretService>()
+        .register_type::<StackService>()
         .register_type::<CreateRepositoryUseCase>()
         .register_type::<GetRepositoriesUseCase>()
         .register_type::<CreateStackUseCase>()

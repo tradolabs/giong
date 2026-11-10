@@ -13,12 +13,12 @@ pub fn run(
     job_id: &str,
     stack_id: &str,
     stack_name: &str,
+    configurations: &Value,
     secrets: &[Secret],
     working_dir: &Path,
     logger: &mut File,
 ) -> Result<Option<i32>, Error> {
-    let configurations = load_configurations(working_dir)?;
-    let plan = plugins::plan(stack_name, &configurations)?;
+    let plan = plugins::plan(stack_name, configurations)?;
     match &plan {
         Plan::Docker { dockerfile, dockerignore, args } => {
             let image = format!("giong-image:{job_id}");
@@ -33,16 +33,6 @@ pub fn run(
             result
         }
     }
-}
-
-fn load_configurations(working_dir: &Path) -> Result<Value, Error> {
-    let config_path = working_dir.join("giong.toml");
-    let contents = fs::read_to_string(&config_path).map_err(|error| {
-        Error::Unexpected(format!("Could not read {}: {error}", config_path.display()))
-    })?;
-    toml::from_str(&contents).map_err(|error| {
-        Error::Unexpected(format!("Could not parse {}: {error}", config_path.display()))
-    })
 }
 
 fn build_image(
@@ -64,14 +54,9 @@ fn build_image(
     if let Some(ignore) = dockerignore_content {
         fs::write(build_files.path().join("Dockerfile.dockerignore"), ignore)?;
     }
-    run_command(
-        Command::new("docker")
-            .args(["build", "--tag", image, "--file"])
-            .arg(&dockerfile)
-            .arg(".")
-            .current_dir(&context),
-        logger,
-    )
+    let mut command = Command::new("docker");
+    command.args(["build", "--tag", image, "--file"]).arg(&dockerfile);
+    run_command(command.arg(".").current_dir(&context), logger)
 }
 
 fn run_container(

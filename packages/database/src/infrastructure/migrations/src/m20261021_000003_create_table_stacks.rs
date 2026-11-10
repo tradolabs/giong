@@ -14,12 +14,9 @@ impl MigrationTrait for Migration {
                     .if_not_exists()
                     .col(ColumnDef::new("id").uuid().not_null().primary_key())
                     .col(ColumnDef::new("name").string().not_null())
-                    .col(ColumnDef::new("repo_url").string().not_null())
-                    .col(ColumnDef::new("branch").string().not_null())
-                    .col(ColumnDef::new("folder_path").string().not_null())
+                    .col(ColumnDef::new("configurations").json().not_null().default("{}"))
                     .col(ColumnDef::new("secret_set_id").uuid())
                     .col(ColumnDef::new("inherited_secret_set_ids").json().not_null().default("[]"))
-                    .col(ColumnDef::new("last_commit").string())
                     .col(
                         ColumnDef::new("created_at")
                             .string()

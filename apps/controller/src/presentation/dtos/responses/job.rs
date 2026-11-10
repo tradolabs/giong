@@ -6,7 +6,6 @@ use uuid::Uuid;
 pub(in crate::presentation) struct JobResponseDto {
     pub id: Uuid,
     pub stack_id: Uuid,
-    pub commit_sha: String,
     pub status: &'static str,
     pub started_at: String,
     pub finished_at: Option<String>,
@@ -20,7 +19,6 @@ impl From<JobEntity> for JobResponseDto {
         Self {
             id: entity.id,
             stack_id: entity.stack_id,
-            commit_sha: entity.commit_sha,
             status: entity.status.as_str(),
             started_at: entity.started_at,
             finished_at: entity.finished_at,

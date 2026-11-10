@@ -9,7 +9,6 @@ pub struct Model {
     #[sea_orm(primary_key, auto_increment = false)]
     pub id: Uuid,
     pub stack_id: Uuid,
-    pub commit_sha: String,
     pub status: JobStatus,
     pub started_at: String,
     pub finished_at: Option<String>,
@@ -41,7 +40,6 @@ impl From<Model> for crate::entities::job_entity::JobEntity {
         Self {
             id: model.id,
             stack_id: model.stack_id,
-            commit_sha: model.commit_sha,
             status: model.status,
             started_at: model.started_at,
             finished_at: model.finished_at,

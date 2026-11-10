@@ -1,5 +1,4 @@
 import type { Stack } from "../../../types/stack";
-import { formatRepo, shortSha } from "../../../shared/format";
 
 interface StackPaneProps {
   stacks: Stack[];
@@ -30,32 +29,7 @@ export function StackPane({ stacks, selectedStackId, onSelectStack, onSettings, 
                 </span>
                 <span className="item-name" title={stack.name}>{stack.name}</span>
               </span>
-              <span className="item-meta stack-card-repository" title={stack.repo_url}>
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true">
-                  <path d="M6 3h12v18l-6-3-6 3V3Z" /><path d="M9 7h6M9 11h6" />
-                </svg>
-                <span>{formatRepo(stack.repo_url)}</span>
-              </span>
-              {stack.folder_path && stack.folder_path !== "." && (
-                <span className="item-meta" title={stack.folder_path}>
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true">
-                    <path d="M3 7V5h6l2 2h10v13H3V7Z" />
-                  </svg>
-                  <span>{stack.folder_path}</span>
-                </span>
-              )}
-              <span className="stack-card-footer">
-                <span className="branch-tag mono" title={stack.branch}>
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true">
-                    <circle cx="6" cy="5" r="2" /><circle cx="6" cy="19" r="2" /><circle cx="18" cy="5" r="2" />
-                    <path d="M6 7v10M18 7a9 9 0 0 1-9 9H6" />
-                  </svg>
-                  <span>{stack.branch}</span>
-                </span>
-                {stack.last_commit && <span className="stack-card-commit mono" title={stack.last_commit}>
-                  {shortSha(stack.last_commit)}
-                </span>}
-              </span>
+              <span className="item-meta">{String(stack.configurations.runtime ?? "Configuration required")}</span>
             </button>
             <button type="button" className="stack-card-settings" title="Stack settings"
               aria-label={`Settings for ${stack.name}`} onClick={() => onSettings(stack)}>

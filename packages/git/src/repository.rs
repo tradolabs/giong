@@ -23,13 +23,32 @@ pub fn checkout(
 }
 
 pub fn get_last_commit(url: &str, branch: &str, token: Option<&str>) -> Result<String, Error> {
+    resolve_revision(url, &format!("refs/heads/{branch}"), token)
+}
+
+/// Resolve HEAD, a branch, a tag, or a full commit SHA for a pinned checkout.
+pub fn resolve_revision(url: &str, revision: &str, token: Option<&str>) -> Result<String, Error> {
+    if revision.len() == 40
+        && let Ok(commit) = Oid::from_str(revision)
+    {
+        return Ok(commit.to_string());
+    }
     let mut remote = Remote::create_detached(url)?;
     let connection = remote.connect_auth(Direction::Fetch, Some(token_callbacks(token)), None)?;
-    let reference = format!("refs/heads/{branch}");
-    let head = connection
-        .list()?
-        .iter()
-        .find(|head| head.name() == reference)
-        .ok_or(Error::Unexpected("Branch not found in remote repository"))?;
-    Ok(head.oid().to_string())
+    let references = if revision == "HEAD" || revision.starts_with("refs/") {
+        vec![format!("{revision}^{{}}"), revision.to_owned()]
+    } else {
+        vec![
+            format!("refs/heads/{revision}"),
+            format!("refs/tags/{revision}^{{}}"),
+            format!("refs/tags/{revision}"),
+        ]
+    };
+    let heads = connection.list()?;
+    for reference in references {
+        if let Some(head) = heads.iter().find(|head| head.name() == reference) {
+            return Ok(head.oid().to_string());
+        }
+    }
+    Err(Error::Unexpected("Revision not found in remote repository"))
 }

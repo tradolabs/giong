@@ -102,7 +102,7 @@ export function fetchJobLogs(jobId: string, fromLines = 0): Promise<string> {
   );
 }
 
-export function updateStack(stackId: string, settings: Partial<Pick<Stack, "repo_url" | "folder_path">>): Promise<Stack> {
+export function updateStack(stackId: string, settings: Pick<Stack, "name" | "configurations">): Promise<Stack> {
   return request<Stack>(`/stacks/${encodeURIComponent(stackId)}`, {
     method: "PUT",
     body: JSON.stringify(settings),
@@ -121,7 +121,7 @@ export function createRepository(name: string, url: string, token?: string): Pro
   return request<Repository>("/repositories", { method: "POST", body: JSON.stringify({ name, url, token }) });
 }
 
-export function createStack(input: Pick<Stack, "name" | "repo_url" | "branch" | "folder_path">): Promise<Stack> {
+export function createStack(input: Pick<Stack, "name" | "configurations">): Promise<Stack> {
   return request<Stack>("/stacks", { method: "POST", body: JSON.stringify(input) });
 }
 

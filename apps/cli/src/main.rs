@@ -32,13 +32,11 @@ async fn main() -> anyhow::Result<()> {
                     .await?;
                 println!("Added repository {name}");
             }
-            AddResource::Stack { name, repo_url, branch, folder_path } => {
+            AddResource::Stack { name, configurations } => {
                 application
                     .create_stack(CreateStackInput {
                         name: name.clone(),
-                        repo_url,
-                        branch,
-                        folder_path,
+                        configurations: serde_json::from_str(&configurations)?,
                     })
                     .await?;
                 println!("Added stack {name}");

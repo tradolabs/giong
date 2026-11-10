@@ -77,8 +77,8 @@ pub(in crate::presentation) async fn update_stack(
     let stack = application
         .update_stack(giong_core::application::use_cases::update_stack::UpdateStackInput {
             stack_id,
-            repo_url: input.repo_url.map(|value| value.trim().to_owned()),
-            folder_path: input.folder_path.map(|value| value.trim().to_owned()),
+            name: input.name,
+            configurations: input.configurations,
         })
         .await?;
     Ok(Json(StackResponseDto::from(stack)))
@@ -97,9 +97,7 @@ pub(in crate::presentation) async fn create_stack(
     let stack = application
         .create_stack(giong_core::application::use_cases::create_stack::CreateStackInput {
             name: input.name.trim().to_owned(),
-            repo_url: input.repo_url.trim().to_owned(),
-            branch: input.branch.trim().to_owned(),
-            folder_path: input.folder_path.trim().to_owned(),
+            configurations: input.configurations,
         })
         .await?;
     Ok((StatusCode::CREATED, Json(StackResponseDto::from(stack))))

@@ -14,7 +14,6 @@ impl MigrationTrait for Migration {
                     .if_not_exists()
                     .col(ColumnDef::new("id").uuid().not_null().primary_key())
                     .col(ColumnDef::new("stack_id").uuid().not_null())
-                    .col(ColumnDef::new("commit_sha").string().not_null())
                     .col(ColumnDef::new("status").string().not_null())
                     .col(
                         ColumnDef::new("started_at")

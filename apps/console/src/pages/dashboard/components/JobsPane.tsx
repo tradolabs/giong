@@ -72,7 +72,7 @@ export function JobsPane({ stackId, onCreated, onSignOut, jobs, stacks, selected
                 <StatusBadge status={job.status} />
               </div>
               <div className="item-row item-meta">
-                <span className="mono">{shortSha(job.commit_sha)}</span>
+                <span className="mono">{shortSha(job.id)}</span>
                 <span>{job.started_at || job.created_at}</span>
               </div>
             </button>

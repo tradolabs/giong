@@ -9,9 +9,7 @@ use crate::{
 use anyhow::{Context, Result};
 use chrono::Utc;
 use giong_database::Database;
-use giong_database::entities::{
-    job_entity::JobEntity, repository_entity::RepositoryEntity, stack_entity::StackEntity,
-};
+use giong_database::entities::{job_entity::JobEntity, stack_entity::StackEntity};
 use giong_database::enums::job_status::JobStatus;
 use giong_database::repositories::types::{condition::Condition, document::Document};
 use giong_di::Injectable;
@@ -19,7 +17,6 @@ use giong_storage::storage::Storage;
 use std::{
     fs::{self, File},
     io::Write,
-    path::{Path, PathBuf},
     sync::Arc,
 };
 use uuid::Uuid;
@@ -63,7 +60,7 @@ impl UseCase for RunJobUseCase {
             return Ok(());
         }
 
-        eprintln!("Job {} running (stack: {}, commit: {})", job.id, job.stack_id, job.commit_sha);
+        eprintln!("Job {} running (stack: {})", job.id, job.stack_id);
 
         let stack = db
             .stacks
@@ -71,13 +68,7 @@ impl UseCase for RunJobUseCase {
             .await?
             .ok_or_else(|| Exception::unexpected("Queued job stack was not found"))?;
 
-        let repo = db
-            .repositories
-            .find_one(Condition::new().eq("url", stack.repo_url.as_str()))
-            .await?
-            .ok_or_else(|| Exception::unexpected("Queued job repository was not found"))?;
-
-        let (status, code) = self.run_job(repo, stack, job).await;
+        let (status, code) = self.run_job(stack, job).await;
 
         db.jobs
             .update_one(
@@ -96,37 +87,67 @@ impl UseCase for RunJobUseCase {
 }
 
 impl RunJobUseCase {
-    async fn run_job(
-        &self,
-        repo: RepositoryEntity,
-        stack: StackEntity,
-        job: JobEntity,
-    ) -> (JobStatus, Option<i32>) {
+    async fn run_job(&self, stack: StackEntity, job: JobEntity) -> (JobStatus, Option<i32>) {
         let job_id = job.id;
         let root = root_dir();
         let checkout_path = root.join("runs").join(job_id.to_string());
         let log_path = root.join("logs").join(job_id.to_string());
         let encryption_key = self.config.encryption_key.clone();
         let secrets = self.secret_service.get_run_secrets(stack.id).await;
+        let database = self.database.clone();
+        let runtime = tokio::runtime::Handle::current();
 
         let result = tokio::task::spawn_blocking({
             let (checkout_path, log_path) = (checkout_path.clone(), log_path.clone());
             move || -> Result<Option<i32>> {
                 let mut logger = File::create(&log_path)?;
-                let result =
-                    Self::checkout(&repo, &stack, &job, &checkout_path, encryption_key.as_deref())
-                        .and_then(|dir| {
-                            let secrets = secrets?;
-                            giong_runner::run(
-                                &job_id.to_string(),
-                                &stack.id.to_string(),
-                                &stack.name,
-                                &secrets,
-                                &dir,
-                                &mut logger,
-                            )
-                            .map_err(Into::into)
-                        });
+                let result = (|| -> Result<Option<i32>> {
+                    let sources =
+                        giong_runner::types::configuration_sources(&stack.configurations)?;
+                    fs::create_dir_all(&checkout_path)?;
+                    for (position, source) in sources.iter().enumerate() {
+                        let repository =
+                            runtime
+                                .block_on(database.repositories.find_one(
+                                    Condition::new().eq("url", source.repo_url.as_str()),
+                                ))?
+                                .context("Source repository no longer exists")?;
+                        let token = repository
+                            .credentials
+                            .as_deref()
+                            .map(|value| {
+                                let key = encryption_key
+                                    .as_deref()
+                                    .context("Encryption key is not configured")?;
+                                decrypt_token(value, key, repository.url.as_bytes())
+                            })
+                            .transpose()?;
+                        let commit_sha = giong_git::resolve_revision(
+                            &repository.url,
+                            &source.revision,
+                            token.as_deref(),
+                        )?;
+                        let directory = checkout_path.join(format!("source-{position}"));
+                        writeln!(logger, "Checking out {} at {}", repository.url, commit_sha)?;
+                        giong_git::checkout(
+                            &repository.url,
+                            &directory,
+                            &commit_sha,
+                            token.as_deref(),
+                        )?;
+                        fs::remove_dir_all(directory.join(".git"))?;
+                    }
+                    let secrets = secrets?;
+                    Ok(giong_runner::run(
+                        &job_id.to_string(),
+                        &stack.id.to_string(),
+                        &stack.name,
+                        &stack.configurations,
+                        &secrets,
+                        &checkout_path,
+                        &mut logger,
+                    )?)
+                })();
                 if let Err(err) = &result {
                     let _ = writeln!(logger, "{err:#}");
                 }
@@ -152,33 +173,5 @@ impl RunJobUseCase {
 
         remove_dir(&checkout_path);
         (status, code)
-    }
-
-    fn checkout(
-        repo: &RepositoryEntity,
-        stack: &StackEntity,
-        job: &JobEntity,
-        checkout_path: &Path,
-        key: Option<&str>,
-    ) -> Result<PathBuf> {
-        let token = repo
-            .credentials
-            .as_deref()
-            .map(|val| {
-                let key = key.context("Encryption key is not configured")?;
-                decrypt_token(val, key, repo.url.as_bytes())
-            })
-            .transpose()?;
-
-        giong_git::checkout(&repo.url, checkout_path, &job.commit_sha, token.as_deref())?;
-
-        let stack_path = checkout_path.join(&stack.folder_path);
-        let working_dir = fs::canonicalize(&stack_path)
-            .with_context(|| format!("Could not resolve stack folder {}", stack_path.display()))?;
-
-        if !working_dir.starts_with(fs::canonicalize(checkout_path)?) || !working_dir.is_dir() {
-            anyhow::bail!("Stack folder must be a directory inside the repository checkout");
-        }
-        Ok(working_dir)
     }
 }

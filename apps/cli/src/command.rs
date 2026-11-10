@@ -20,11 +20,8 @@ pub(crate) enum AddResource {
     Stack {
         #[arg(long)]
         name: String,
+        /// Runner configuration as a JSON object.
         #[arg(long)]
-        repo_url: String,
-        #[arg(long)]
-        branch: String,
-        #[arg(long, default_value = ".")]
-        folder_path: String,
+        configurations: String,
     },
 }
