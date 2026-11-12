@@ -1,7 +1,7 @@
 import "./StatusBadge.css";
-import type { JobStatus } from "../../../types/job";
+import type { RunStatus } from "../../../types/node-run";
 
-const STATUS_LABELS: Record<JobStatus, string> = {
+const STATUS_LABELS: Record<RunStatus, string> = {
   pending: "Pending",
   running: "Running",
   succeeded: "Succeeded",
@@ -9,7 +9,7 @@ const STATUS_LABELS: Record<JobStatus, string> = {
   interrupted: "Interrupted",
 };
 
-export function StatusBadge({ status }: { status: JobStatus }) {
+export function StatusBadge({ status }: { status: RunStatus }) {
   return (
     <span className={`status-badge status-${status}`}>
       <span className="status-dot" />

@@ -1,12 +1,12 @@
-use crate::infrastructure::repositories::secret_set::SeaOrmSecretSetRepository;
+use crate::infrastructure::repositories::node::SeaOrmNodeRepository;
+use crate::infrastructure::repositories::{
+    secret::SeaOrmSecretRepository, vault::SeaOrmVaultRepository,
+};
 use migrations::{Migrator, MigratorTrait};
 use sea_orm::{DatabaseConnection, DbErr, TransactionTrait};
 use std::{ops::AsyncFnOnce, sync::Arc};
 
-use super::super::repositories::{
-    job::SeaOrmJobRepository, repository::SeaOrmRepositoryRepository,
-    secret::SeaOrmSecretRepository, stack::SeaOrmStackRepository, user::SeaOrmUserRepository,
-};
+use super::super::repositories::{flow::SeaOrmFlowRepository, user::SeaOrmUserRepository};
 use super::{connection::Connection, transaction_context};
 
 pub(crate) enum Database {
@@ -41,11 +41,10 @@ impl Database {
 
     pub(crate) fn into_database(self: Arc<Self>) -> crate::database::Database {
         crate::database::Database {
-            repositories: Box::new(SeaOrmRepositoryRepository::new(self.clone())),
-            stacks: Box::new(SeaOrmStackRepository::new(self.clone())),
-            secret_sets: Box::new(SeaOrmSecretSetRepository::new(self.clone())),
+            nodes: Box::new(SeaOrmNodeRepository::new(self.clone())),
+            vaults: Box::new(SeaOrmVaultRepository::new(self.clone())),
             secrets: Box::new(SeaOrmSecretRepository::new(self.clone())),
-            jobs: Box::new(SeaOrmJobRepository::new(self.clone())),
+            flows: Box::new(SeaOrmFlowRepository::new(self.clone())),
             users: Box::new(SeaOrmUserRepository::new(self.clone())),
             database: self,
         }

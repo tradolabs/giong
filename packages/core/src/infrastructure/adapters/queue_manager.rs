@@ -23,7 +23,7 @@ impl QueueManager for QueueManagerImpl {
 impl QueueEvent {
     pub(super) async fn publish(self, publisher: &Publisher) -> Result<(), Error> {
         match self {
-            Self::RunJob(event) => publisher.publish(event).await,
+            Self::RunNode(event) => publisher.publish(event).await,
         }
     }
 }

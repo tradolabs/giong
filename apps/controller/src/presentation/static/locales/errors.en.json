@@ -22,8 +22,8 @@
       "service_unavailable": "The webhook service is unavailable.",
       "queue_unavailable": "The webhook queue is unavailable."
     },
-    "stack": {
-      "not_found": "The stack was not found."
+    "flow": {
+      "not_found": "The flow was not found."
     },
     "secret": {
       "not_found": "The secret was not found.",

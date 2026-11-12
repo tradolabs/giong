@@ -3,4 +3,4 @@ mod error;
 mod repository;
 
 pub use error::Error;
-pub use repository::{checkout, get_last_commit, resolve_revision};
+pub use repository::{changed_files, checkout, get_last_commit, head, resolve_revision};

@@ -1,0 +1,27 @@
+flow:
+  name: personal
+  inherited_vault_ids: []
+  nodes:
+    - name: repository
+      type: sources/repository
+      properties:
+        repo_url: https://github.com/trado/gitops
+        token:
+          secret: git_token
+      triggers:
+        - type: interval
+          seconds: 60
+
+    - name: deploy
+      type: runners/kubectl
+      properties:
+        source: repository
+        path: deployments/trado
+        values_file: environments/values.yaml
+        namespace: trado
+        kubeconfig:
+          secret: kubeconfig
+      triggers:
+        - type: event
+          node: repository
+          event: changed

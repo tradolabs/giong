@@ -1,0 +1,25 @@
+.flow-canvas-pane { display: flex; flex-direction: column; min-height: 300px; }
+.flow-canvas-tools { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.flow-canvas-scroll { flex: 1; min-height: 0; overflow: auto; background: radial-gradient(var(--border-strong) 1px, transparent 1px); background-size: 20px 20px; }
+.flow-canvas-board { position: relative; transform-origin: top left; }
+.flow-canvas-edges { position: absolute; inset: 0; overflow: visible; pointer-events: none; }
+.flow-canvas-edges g path { fill: none; stroke: var(--accent); stroke-width: 1.5; }
+.flow-canvas-edges marker path { fill: var(--accent); }
+.flow-canvas-edges text { fill: var(--text-secondary); font: 11px var(--font-mono); }
+.canvas-node { position: absolute; box-sizing: border-box; display: flex; flex-direction: column; width: 320px; height: 210px; padding: 16px; border: 1px solid var(--border-strong); border-radius: 10px; background: var(--bg-surface); box-shadow: 0 4px 15px #2532470a; }
+.canvas-node.selected { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent-soft); }
+.canvas-node-name { display: block; padding: 0; border: 0; background: transparent; color: var(--text-primary); font: inherit; font-weight: 600; text-align: left; cursor: pointer; width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; line-height: 20px; }
+.canvas-node > code { display: block; margin-top: 8px; color: var(--text-secondary); font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.canvas-node footer { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: auto; }
+.canvas-node small, .canvas-idle { color: var(--text-secondary); font-size: 11px; }
+.canvas-node small { display: block; margin-top: 8px; }
+.canvas-error { margin: 0; padding: 12px 20px; color: var(--danger); }
+.workspace.canvas-workspace { grid-template-columns: minmax(220px, 22%) minmax(0, 1fr); }
+.flow-canvas-content { min-height: 0; min-width: 0; display: flex; }
+.flow-canvas-content > .flow-canvas-pane { flex: 1; }
+@media (max-width: 760px) { .workspace.canvas-workspace { grid-template-columns: 1fr; height: auto; } .flow-canvas-content { min-height: 450px; } }
+
+.canvas-node { cursor: pointer; }
+.canvas-last-run { height: 32px; line-height: 16px; overflow: hidden; }
+.canvas-node > * { flex-shrink: 0; }
+.canvas-schedule { height: 14px; line-height: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }

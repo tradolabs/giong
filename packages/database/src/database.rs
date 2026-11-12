@@ -1,20 +1,18 @@
 use crate::error::Error;
+use crate::repositories::node::NodeRepository;
+use crate::repositories::{secret::SecretRepository, vault::VaultRepository};
 use std::{ops::AsyncFnOnce, sync::Arc};
 
 use crate::{
     infrastructure::database::database::Database as Backend,
-    repositories::{
-        job::JobRepository, repository::RepositoryRepository, secret::SecretRepository,
-        secret_set::SecretSetRepository, stack::StackRepository, user::UserRepository,
-    },
+    repositories::{flow::FlowRepository, user::UserRepository},
 };
 
 pub struct Database {
-    pub repositories: Box<dyn RepositoryRepository>,
-    pub stacks: Box<dyn StackRepository>,
-    pub secret_sets: Box<dyn SecretSetRepository>,
+    pub nodes: Box<dyn NodeRepository>,
+    pub vaults: Box<dyn VaultRepository>,
     pub secrets: Box<dyn SecretRepository>,
-    pub jobs: Box<dyn JobRepository>,
+    pub flows: Box<dyn FlowRepository>,
     pub users: Box<dyn UserRepository>,
     pub(crate) database: Arc<Backend>,
 }

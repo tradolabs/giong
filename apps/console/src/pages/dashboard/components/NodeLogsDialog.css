@@ -1,0 +1,11 @@
+.node-logs-dialog { width: min(1150px, calc(100vw - 32px)); height: min(760px, calc(100svh - 48px)); }
+.node-logs-grid { display: grid; grid-template-columns: minmax(200px, 280px) minmax(0, 1fr); height: calc(100% - 85px); min-height: 0; }
+.node-logs-list { min-height: 0; overflow-y: auto; padding: 12px; border-right: 1px solid var(--border-subtle); }
+.node-log-file { display: grid; gap: 9px; width: 100%; margin-bottom: 8px; padding: 12px; border: 1px solid var(--border-subtle); border-radius: 7px; background: var(--bg-surface); color: inherit; text-align: left; cursor: pointer; }
+.node-log-file.selected { border-color: var(--accent); background: var(--accent-soft); }
+.node-log-file strong { font-size: 12px; }
+.node-log-file code { font-size: 10px; overflow-wrap: anywhere; color: var(--text-secondary); }
+.node-log-file .status-badge { justify-self: start; }
+.node-logs-grid > .log-pane { height: auto; grid-column: auto; border: 0; border-radius: 0; }
+.node-logs-grid .log-meta strong { overflow-wrap: anywhere; font-size: 11px; }
+@media (max-width: 680px) { .node-logs-grid { grid-template-columns: 1fr; grid-template-rows: minmax(120px, 28%) minmax(0, 1fr); } .node-logs-list { border-right: 0; border-bottom: 1px solid var(--border-subtle); } }

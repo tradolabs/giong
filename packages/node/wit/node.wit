@@ -1,0 +1,43 @@
+package giong:node@0.1.0;
+
+// Native Git transport is provided by the host; guests cannot open sockets.
+interface git {
+    checkout: func(inputs: string) -> result<string, string>;
+    head: func(repository-path: string) -> result<string, string>;
+    changed-files: func(inputs: string) -> result<string, string>;
+}
+
+interface storage {
+    get: func(key: string) -> result<option<list<u8>>, string>;
+    put: func(key: string, value: list<u8>) -> result<_, string>;
+    delete: func(key: string) -> result<bool, string>;
+    keys: func(prefix: string) -> result<list<string>, string>;
+}
+
+interface secrets {
+    get: func(key: string) -> result<string, string>;
+}
+
+interface events {
+    emit: func(event: string) -> result<_, string>;
+}
+
+interface execution {
+    execute: func(request: string) -> result<string, string>;
+}
+
+interface nodes {
+    scope: func() -> result<string, string>;
+    output: func(name: string) -> result<string, string>;
+}
+
+world node {
+    import nodes;
+    import events;
+    import secrets;
+    import execution;
+    import storage;
+    import git;
+    export metadata: func() -> result<string, string>;
+    export configure: func(args: string) -> result<_, string>;
+}

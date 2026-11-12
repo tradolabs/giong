@@ -1,151 +1,113 @@
 import "./DashboardPage.css";
 import { useEffect, useRef, useState } from "react";
 import { UnauthorizedError } from "../../api/exception";
-import { fetchJobs, fetchStacks } from "../../api/requests";
-import type { Job } from "../../types/job";
-import type { Stack } from "../../types/stack";
-import { LogStreamPane } from "./components/LogStreamPane";
-import { JobsPane } from "./components/JobsPane";
-import { StackPane } from "./components/StackPane";
-import { StackSettingsDialog } from "./components/StackSettingsDialog";
-import { AddStackDialog } from "./components/AddStackDialog";
-import { RepositorySettingsDialog } from "./components/RepositorySettingsDialog";
+import { fetchNodeRuns, fetchFlows, runNode } from "../../api/requests";
+import type { NodeRun } from "../../types/node-run";
+import type { Flow } from "../../types/flow";
+import { NodeLogsDialog } from "./components/NodeLogsDialog";
+import { FlowCanvas } from "./components/FlowCanvas";
+import { FlowPane } from "./components/FlowPane";
+import { FlowSettingsDialog } from "./components/FlowSettingsDialog";
+import { AddFlowDialog } from "./components/AddFlowDialog";
+import { GlobalSettingsDialog } from "./components/GlobalSettingsDialog";
 
 export function DashboardPage({ onSignOut }: { onSignOut: () => void }) {
-  const stackRevision = useRef(0);
-  const [addingStack, setAddingStack] = useState(false);
+  const flowRevision = useRef(0);
+  const runRevision = useRef(0);
+  const [addingFlow, setAddingFlow] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
-  const [newRepositoryUrl, setNewRepositoryUrl] = useState<string | null>(null);
-  const [stacks, setStacks] = useState<Stack[]>([]);
-  const [selectedStackId, setSelectedStackId] = useState<string | null>(null);
-  const [jobs, setJobs] = useState<Job[]>([]);
-  const [selectedJobId, setSelectedJobId] = useState<string | null>(null);
-  const [settingsStack, setSettingsStack] = useState<Stack | null>(null);
+  const [flows, setFlows] = useState<Flow[]>([]);
+  const [selectedFlowId, setSelectedFlowId] = useState<string | null>(null);
+  const [runs, setRuns] = useState<NodeRun[]>([]);
+  const [logsNodeId, setLogsNodeId] = useState<string | null>(null);
+  const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [settingsFlow, setSettingsFlow] = useState<Flow | null>(null);
   const [settingsTab, setSettingsTab] = useState<"general" | "secrets">("general");
+  const selectedFlow = flows.find(flow => flow.id === selectedFlowId);
 
   useEffect(() => {
     let active = true;
-
-    async function loadStacks() {
+    async function load() {
       try {
-        const revision = stackRevision.current;
-        const data = await fetchStacks();
-        if (!active || revision !== stackRevision.current) return;
-        setStacks(data);
-        setSelectedStackId((current) => {
-          if (current && data.some((s) => s.id === current)) return current;
-          return data[0]?.id ?? null;
-        });
-      } catch (err) {
-        if (err instanceof UnauthorizedError) onSignOut();
-      }
+        const revision = flowRevision.current;
+        const data = await fetchFlows();
+        if (!active || revision !== flowRevision.current) return;
+        setFlows(data);
+        setSelectedFlowId(current => current && data.some(flow => flow.id === current) ? current : data[0]?.id ?? null);
+      } catch (err) { if (err instanceof UnauthorizedError) onSignOut(); }
     }
-
-    loadStacks();
-    const timer = window.setInterval(loadStacks, 5000);
-    return () => {
-      active = false;
-      window.clearInterval(timer);
-    };
+    void load();
+    const timer = window.setInterval(load, 5000);
+    return () => { active = false; window.clearInterval(timer); };
   }, [onSignOut]);
 
   useEffect(() => {
-    if (!selectedStackId) {
-      setJobs([]);
-      setSelectedJobId(null);
-      return;
-    }
+    setSelectedNodeId(current => current && selectedFlow?.nodes.some(node => node.id === current) ? current : selectedFlow?.nodes[0]?.id ?? null);
+  }, [selectedFlowId, selectedFlow?.nodes]);
 
+  useEffect(() => {
+    setRuns([]); setError(null); setLogsNodeId(null);
+    if (!selectedFlowId) return;
     let active = true;
-    const stackId = selectedStackId;
-
-    async function loadJobs() {
+    const id = selectedFlowId;
+    async function load() {
       try {
-        const data = await fetchJobs(stackId);
-        if (!active) return;
-        setJobs(data);
-        setSelectedJobId((current) => {
-          if (current && data.some((j) => j.id === current)) return current;
-          return data[0]?.id ?? null;
-        });
+        const revision = runRevision.current;
+        const data = await fetchNodeRuns(id);
+        if (active && revision === runRevision.current) setRuns(data);
       } catch (err) {
+        if (!active) return;
         if (err instanceof UnauthorizedError) onSignOut();
+        else setError(err instanceof Error ? err.message : "Could not load node status");
       }
     }
+    void load();
+    const timer = window.setInterval(load, 2000);
+    return () => { active = false; window.clearInterval(timer); };
+  }, [selectedFlowId, onSignOut]);
 
-    loadJobs();
-    const timer = window.setInterval(loadJobs, 2500);
-    return () => {
-      active = false;
-      window.clearInterval(timer);
-    };
-  }, [selectedStackId, onSignOut]);
+  async function executeNode(nodeId: string) {
+    if (!selectedFlowId || submitting) return;
+    setSubmitting(nodeId); setSelectedNodeId(nodeId); setError(null);
+    try {
+      const run = await runNode(selectedFlowId, nodeId);
+      runRevision.current += 1;
+      setRuns(current => [run, ...current.filter(item => item.id !== run.id)]);
+    } catch (err) {
+      if (err instanceof UnauthorizedError) onSignOut();
+      else setError(err instanceof Error ? err.message : "Could not run node");
+    } finally { setSubmitting(null); }
+  }
+  const logsNode = selectedFlow?.nodes.find(node => node.id === logsNodeId);
 
-  const selectedJob = jobs.find((j) => j.id === selectedJobId) ?? null;
-
-  return (
-    <div className="app-shell">
-      <header className="topbar">
-        <div className="topbar-brand">
-          <span className="brand-mark" aria-hidden="true">G</span>
-          <span className="topbar-logo">Giong</span>
-          <span className="topbar-tag">Console</span>
-          <span className="topbar-context">CI/CD</span>
-        </div>
-        <div className="topbar-actions">
-          <button className="btn-ghost" type="button" onClick={() => setShowSettings(true)}>Settings</button>
-          <button className="btn-ghost" type="button" onClick={onSignOut}>
-            Sign out
-          </button>
-        </div>
-      </header>
-
-      <main className="workspace">
-        <StackPane
-          stacks={stacks}
-          selectedStackId={selectedStackId}
-          onSelectStack={setSelectedStackId}
-          onSettings={(stack) => { setSettingsTab("general"); setSettingsStack(stack); }}
-          onAddStack={() => setAddingStack(true)}
-        />
-        <JobsPane
-          key={selectedStackId}
-          stackId={selectedStackId}
-          onSignOut={onSignOut}
-          onCreated={(job) => {
-            setJobs((current) => [job, ...current.filter((item) => item.id !== job.id)]);
-            setSelectedJobId(job.id);
-          }}
-          jobs={jobs}
-          stacks={stacks}
-          selectedJobId={selectedJobId}
-          onSelectJob={setSelectedJobId}
-        />
-        <LogStreamPane
-          job={selectedJob}
-          stack={selectedJob ? stacks.find((stack) => stack.id === selectedJob.stack_id) : undefined}
-          onSignOut={onSignOut}
-        />
-      </main>
-      {addingStack && <AddStackDialog onClose={() => setAddingStack(false)} onSignOut={onSignOut}
-        onManageRepositories={() => setShowSettings(true)} newRepositoryUrl={newRepositoryUrl}
-        onCreated={(stack) => {
-          stackRevision.current += 1;
-          setStacks((current) => [stack, ...current.filter((item) => item.id !== stack.id)]);
-          setSelectedStackId(stack.id);
-          setSettingsTab("secrets");
-          setSettingsStack(stack);
-          setSelectedJobId(null);
-        }} />}
-      {showSettings && <RepositorySettingsDialog onClose={() => setShowSettings(false)} onSignOut={onSignOut}
-        onAdded={(repository) => { setNewRepositoryUrl(repository.url); if (addingStack) setShowSettings(false); }} />}
-      {settingsStack && <StackSettingsDialog key={settingsStack.id} stack={settingsStack} initialTab={settingsTab}
-        onClose={() => setSettingsStack(null)} onSignOut={onSignOut}
-        onSaved={(updated) => {
-          stackRevision.current += 1;
-          setStacks((current) => current.map((stack) => stack.id === updated.id ? updated : stack));
-          setSettingsStack(updated);
-        }} />}
-    </div>
-  );
+  return <div className="app-shell">
+    <header className="topbar">
+      <div className="topbar-brand"><span className="brand-mark" aria-hidden="true">G</span><span className="topbar-logo">Giong</span><span className="topbar-tag">Console</span><span className="topbar-context">CI/CD</span></div>
+      <div className="topbar-actions"><button className="btn-ghost" type="button" onClick={() => setShowSettings(true)}>Settings</button><button className="btn-ghost" type="button" onClick={onSignOut}>Sign out</button></div>
+    </header>
+    <main className="workspace canvas-workspace">
+      <FlowPane flows={flows} selectedFlowId={selectedFlowId} onSelectFlow={setSelectedFlowId}
+        onSettings={flow => { setSettingsTab("general"); setSettingsFlow(flow); }} onAddFlow={() => setAddingFlow(true)} />
+      <div className="flow-canvas-content">
+        <FlowCanvas key={selectedFlowId} flow={selectedFlow} runs={runs} selected={selectedNodeId} submitting={submitting} error={error}
+          onSelect={id => { setSelectedNodeId(id); setLogsNodeId(id); }} onRun={nodeId => { void executeNode(nodeId); }}
+          onSettings={() => { if (selectedFlow) { setSettingsTab("general"); setSettingsFlow(selectedFlow); } }} />
+      </div>
+    </main>
+    {logsNode && <NodeLogsDialog node={logsNode} runs={runs} onClose={() => setLogsNodeId(null)} onSignOut={onSignOut} />}
+    {addingFlow && <AddFlowDialog onClose={() => setAddingFlow(false)} onSignOut={onSignOut} onCreated={flow => {
+      flowRevision.current += 1; setFlows(current => [flow, ...current]); setSelectedFlowId(flow.id); setSettingsTab("secrets"); setSettingsFlow(flow);
+    }} />}
+    {showSettings && <GlobalSettingsDialog onClose={() => setShowSettings(false)} onSignOut={onSignOut} />}
+    {settingsFlow && <FlowSettingsDialog key={settingsFlow.id} flow={settingsFlow} initialTab={settingsTab} onClose={() => setSettingsFlow(null)} onSignOut={onSignOut}
+      onDeleted={id => {
+        flowRevision.current += 1; setFlows(current => current.filter(flow => flow.id !== id));
+        if (selectedFlowId === id) { setSelectedFlowId(flows.find(flow => flow.id !== id)?.id ?? null); setRuns([]); setSelectedNodeId(null); }
+        setSettingsFlow(null);
+      }} onSaved={updated => {
+        flowRevision.current += 1; setFlows(current => current.map(flow => flow.id === updated.id ? updated : flow)); setSettingsFlow(updated);
+      }} />}
+  </div>;
 }

@@ -1571,8 +1571,12 @@ dependencies = [
  "clap",
  "dotenvy",
  "giong-core",
+ "giong-node",
+ "serde",
  "serde_json",
+ "serde_yaml_ng",
  "tokio",
+ "uuid",
 ]
 
 [[package]]
@@ -1584,8 +1588,7 @@ dependencies = [
  "dotenvy",
  "giong-core",
  "giong-database",
- "giong-scheduler",
- "giong-webhook",
+ "giong-node",
  "jsonwebtoken",
  "serde",
  "serde_json",
@@ -1608,10 +1611,9 @@ dependencies = [
  "getrandom 0.4.3",
  "giong-database",
  "giong-di",
- "giong-git",
+ "giong-kv",
+ "giong-node",
  "giong-publisher",
- "giong-runner",
- "giong-storage",
  "jsonwebtoken",
  "serde",
  "serde_json",
@@ -1665,9 +1667,37 @@ dependencies = [
 name = "giong-kubectl-runner"
 version = "0.1.0"
 dependencies = [
+ "giong-node",
+ "giong-repository-source",
  "serde",
  "serde_json",
+ "sha2 0.10.9",
  "wit-bindgen 0.63.0",
+]
+
+[[package]]
+name = "giong-kv"
+version = "0.1.0"
+dependencies = [
+ "redb",
+ "thiserror",
+]
+
+[[package]]
+name = "giong-node"
+version = "0.1.0"
+dependencies = [
+ "aes-gcm",
+ "anyhow",
+ "base64 0.23.1",
+ "getrandom 0.4.3",
+ "giong-git",
+ "giong-kv",
+ "serde",
+ "serde_json",
+ "tempfile",
+ "wasmtime",
+ "wasmtime-wasi",
 ]
 
 [[package]]
@@ -1683,16 +1713,13 @@ dependencies = [
 ]
 
 [[package]]
-name = "giong-runner"
+name = "giong-repository-source"
 version = "0.1.0"
 dependencies = [
- "anyhow",
+ "giong-node",
  "serde",
  "serde_json",
- "tempfile",
- "thiserror",
- "wasmtime",
- "wasmtime-wasi",
+ "wit-bindgen 0.63.0",
 ]
 
 [[package]]
@@ -3072,6 +3099,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "redb"
+version = "4.5.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8b317ef681e18f6091efbfab532eaf924a135c492d9d0299d0fbfae07e92a39b"
+dependencies = [
+ "libc",
+]
+
+[[package]]
 name = "redox_syscall"
 version = "0.5.18"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3587,6 +3623,19 @@ dependencies = [
  "itoa",
  "ryu",
  "serde",
+]
+
+[[package]]
+name = "serde_yaml_ng"
+version = "0.10.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7b4db627b98b36d4203a7b458cf3573730f2bb591b28871d916dfa9efabfd41f"
+dependencies = [
+ "indexmap",
+ "itoa",
+ "ryu",
+ "serde",
+ "unsafe-libyaml",
 ]
 
 [[package]]
@@ -4391,6 +4440,12 @@ dependencies = [
  "crypto-common 0.2.2",
  "ctutils",
 ]
+
+[[package]]
+name = "unsafe-libyaml"
+version = "0.2.11"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "673aac59facbab8a9007c7f6108d11f63b603f7cabff99fabf650fea5c32b861"
 
 [[package]]
 name = "untrusted"

@@ -1,9 +1,2 @@
-export interface Secret {
-  key: string;
-  source: string | null;
-}
-export interface SecretSet {
-  id: string;
-  name: string;
-  type: "shared" | "local";
-}
+export interface Secret { key: string }
+export interface Vault { id: string; name: string }

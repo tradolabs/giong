@@ -2,13 +2,17 @@
 name = "giong-cli"
 version = "0.1.0"
 edition = "2024"
-description = "Add repositories and stacks to Giong"
+description = "Add repositories and flows to Giong"
 
 [[bin]]
 name = "giong"
 path = "src/main.rs"
 
 [dependencies]
+giong-node = { path = "../../packages/node", default-features = false }
+serde.workspace = true
+serde_yaml_ng = "0.10"
+uuid.workspace = true
 anyhow.workspace = true
 serde_json.workspace = true
 giong-core = { path = "../../packages/core" }
