@@ -32,14 +32,8 @@ impl From<giong_database::error::Error> for Exception {
     }
 }
 
-impl From<giong_storage::Error> for Exception {
-    fn from(error: giong_storage::Error) -> Self {
-        Self::Unexpected(error.to_string())
-    }
-}
-
-impl From<giong_git::Error> for Exception {
-    fn from(error: giong_git::Error) -> Self {
+impl From<serde_json::Error> for Exception {
+    fn from(error: serde_json::Error) -> Self {
         Self::Unexpected(error.to_string())
     }
 }

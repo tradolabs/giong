@@ -32,7 +32,7 @@ export function SignInPage({ onSuccess }: { onSuccess: () => void }) {
         <div className="login-intro-content">
           <p className="login-kicker">Your deployment workspace</p>
           <h1>Every build, <span>in view.</span></h1>
-          <p className="login-description">Keep an eye on your stacks, follow jobs as they run, and find the logs that matter.</p>
+          <p className="login-description">Keep an eye on your flows, run individual nodes, and find the logs that matter.</p>
           <div className="login-pipeline" aria-hidden="true">
             <div className="pipeline-step"><span>01</span>Commit</div>
             <div className="pipeline-connector" />

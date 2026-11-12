@@ -5,11 +5,10 @@ edition = "2024"
 description = "Foreground controller for Giong"
 
 [dependencies]
+giong-node = { path = "../../packages/node", default-features = false }
 anyhow.workspace = true
 giong-database = { path = "../../packages/database" }
 giong-core = { path = "../../packages/core" }
-giong-scheduler = { path = "../../packages/scheduler" }
-giong-webhook = { path = "../../packages/webhook" }
 uuid = { workspace = true, features = ["serde"] }
 tokio = { workspace = true, features = ["sync"] }
 axum = { version = "0.8", default-features = false, features = ["http1", "json", "query", "tokio"] }

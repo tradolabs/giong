@@ -64,16 +64,6 @@ pub(in crate::presentation) fn UnauthorizedException(code: &'static str) -> Http
 }
 
 #[allow(non_snake_case)]
-pub(in crate::presentation) fn BadRequestException(code: &'static str) -> HttpException {
-    HttpException::Response { status: StatusCode::BAD_REQUEST, code }
-}
-
-#[allow(non_snake_case)]
 pub(in crate::presentation) fn NotFoundException(code: &'static str) -> HttpException {
     HttpException::Response { status: StatusCode::NOT_FOUND, code }
-}
-
-#[allow(non_snake_case)]
-pub(in crate::presentation) fn ServiceUnavailableException(code: &'static str) -> HttpException {
-    HttpException::Response { status: StatusCode::SERVICE_UNAVAILABLE, code }
 }

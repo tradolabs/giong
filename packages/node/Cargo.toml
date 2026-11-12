@@ -1,0 +1,22 @@
+[package]
+name = "giong-node"
+version.workspace = true
+edition = "2024"
+
+[features]
+default = ["host"]
+host = ["dep:tempfile", "dep:giong-kv", "dep:aes-gcm", "dep:base64", "dep:getrandom", "dep:giong-git", "dep:anyhow", "dep:wasmtime", "dep:wasmtime-wasi"]
+
+[dependencies]
+tempfile = { version = "3", optional = true }
+giong-kv = { path = "../kv", optional = true }
+aes-gcm = { version = "0.11.1", optional = true }
+base64 = { version = "0.23.1", optional = true }
+getrandom = { version = "0.4", optional = true }
+serde.workspace = true
+
+giong-git = { path = "../git", optional = true }
+anyhow = { workspace = true, optional = true }
+serde_json.workspace = true
+wasmtime = { version = "50", default-features = false, features = ["cranelift", "runtime", "std", "component-model"], optional = true }
+wasmtime-wasi = { version = "50", default-features = false, features = ["p2"], optional = true }

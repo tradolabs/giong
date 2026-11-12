@@ -1,0 +1,4 @@
+.delete-flow-dialog { width: min(440px, calc(100vw - 32px)); }
+.delete-flow-dialog .secrets-content > p { margin-top: 0; overflow-wrap: anywhere; line-height: 1.6; }
+.delete-flow-actions { display: flex; justify-content: flex-end; flex-wrap: wrap; gap: 8px; margin-top: 24px; }
+.delete-flow-actions .delete-flow-confirm { color: var(--danger); border-color: var(--danger-border); background: var(--danger-soft); }

@@ -2,5 +2,5 @@
 .repository-item { display: grid; gap: 5px; padding: 12px; border: 1px solid var(--border-subtle); border-radius: 6px; overflow-wrap: anywhere; }
 .repository-item span, .repository-item small { color: var(--text-secondary); font-size: 12px; }
 .repository-form-title { font-size: 14px; font-weight: 500; margin: 0; }
-.stack-create-fields { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
-@media (max-width: 520px) { .stack-create-fields { grid-template-columns: 1fr; } }
+.flow-create-fields { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+@media (max-width: 520px) { .flow-create-fields { grid-template-columns: 1fr; } }

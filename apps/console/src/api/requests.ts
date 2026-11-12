@@ -1,9 +1,7 @@
-import type { Repository } from "../types/repository";
-import type { Runner } from "../types/runner";
 import type { SignInOutput } from "../types/auth";
-import type { Job } from "../types/job";
-import type { SecretSet, Secret } from "../types/secret";
-import type { Stack } from "../types/stack";
+import type { NodeRun } from "../types/node-run";
+import type { Vault, Secret } from "../types/secret";
+import type { Flow } from "../types/flow";
 import { UnauthorizedError } from "./exception";
 import { getStoredToken, setStoredToken } from "./local-storage";
 
@@ -33,10 +31,12 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
       if (data?.message) message = data.message;
       else if (data?.code === "modules.secret.already_exists") message = "A secret with this key already exists.";
       else if (data?.code === "modules.secret.not_found") message = "This secret no longer exists. Reopen secrets to refresh the list.";
-      else if (data?.code === "modules.stack.already_exists") message = "A stack with this name already exists.";
+      else if (data?.code === "modules.flow.active_run_exists") message = "This flow has an active run. Wait for it to finish.";
+      else if (data?.code === "modules.flow.vault_in_use") message = "Another flow inherits this flow’s vault. Remove that inheritance before deleting the flow.";
+      else if (data?.code === "modules.flow.already_exists") message = "A flow with this name already exists.";
       else if (data?.code === "modules.repository.already_exists") message = "This repository URL has already been added.";
       else if (data?.code === "modules.repository.not_found") message = "This repository no longer exists. Refresh and select another repository.";
-      else if (data?.code === "modules.stack.not_found") message = "This stack no longer exists.";
+      else if (data?.code === "modules.flow.not_found") message = "This flow no longer exists.";
     } catch {
       const text = await response.text().catch(() => "");
       if (text) message = text;
@@ -60,98 +60,61 @@ export async function signIn(username: string, password: string): Promise<SignIn
   return output;
 }
 
-export function fetchStacks(): Promise<Stack[]> {
-  return request<Stack[]>("/stacks");
+export function fetchFlows(): Promise<Flow[]> {
+  return request<Flow[]>("/flows");
 }
 
-export function fetchSecrets(stackId: string): Promise<Secret[]> {
-  return request<Secret[]>(`/stacks/${encodeURIComponent(stackId)}/secrets`);
+export function fetchNodeRuns(flowId: string): Promise<NodeRun[]> {
+  return request<NodeRun[]>(`/flows/${encodeURIComponent(flowId)}/runs`);
+}
+export function runNode(flowId: string, nodeId: string): Promise<NodeRun> {
+  return request<NodeRun>(`/flows/${encodeURIComponent(flowId)}/nodes/${encodeURIComponent(nodeId)}/run`, { method: "POST" });
+}
+export function fetchNodeRunLogs(runId: string, fromLines = 0): Promise<string> {
+  return request<string>(`/runs/${encodeURIComponent(runId)}/logs?from_lines=${fromLines}`);
 }
 
-export function createSecret(stackId: string, key: string, value: string): Promise<Secret[]> {
-  return request<Secret[]>(`/stacks/${encodeURIComponent(stackId)}/secrets`, {
-    method: "POST",
-    body: JSON.stringify({ key, value }),
-  });
-}
-
-export function updateSecret(stackId: string, key: string, value: string): Promise<Secret[]> {
-  return request<Secret[]>(`/stacks/${encodeURIComponent(stackId)}/secrets/${encodeURIComponent(key)}`, {
-    method: "PUT",
-    body: JSON.stringify({ value }),
-  });
-}
-
-export function deleteSecret(stackId: string, key: string): Promise<Secret[]> {
-  return request<Secret[]>(`/stacks/${encodeURIComponent(stackId)}/secrets/${encodeURIComponent(key)}`, {
-    method: "DELETE",
-  });
-}
-
-export function fetchJobs(stackId: string): Promise<Job[]> {
-  return request<Job[]>(`/stacks/${encodeURIComponent(stackId)}/jobs`);
-}
-
-export function createJob(stackId: string): Promise<Job> {
-  return request<Job>(`/stacks/${encodeURIComponent(stackId)}/jobs`, { method: "POST" });
-}
-
-export function fetchJobLogs(jobId: string, fromLines = 0): Promise<string> {
-  return request<string>(
-    `/jobs/${encodeURIComponent(jobId)}/logs?from_lines=${fromLines}`
-  );
-}
-
-export function updateStack(stackId: string, settings: Pick<Stack, "name" | "configurations">): Promise<Stack> {
-  return request<Stack>(`/stacks/${encodeURIComponent(stackId)}`, {
+export function updateFlow(flowId: string, settings: Pick<Flow, "name" | "nodes" | "inherited_vault_ids">): Promise<Flow> {
+  return request<Flow>(`/flows/${encodeURIComponent(flowId)}`, {
     method: "PUT",
     body: JSON.stringify(settings),
   });
 }
 
-export function fetchRunners(): Promise<Runner[]> {
-  return request<Runner[]>("/runners");
+export function createFlow(input: Pick<Flow, "name" | "nodes">): Promise<Flow> {
+  return request<Flow>("/flows", { method: "POST", body: JSON.stringify(input) });
 }
 
-export function fetchRepositories(): Promise<Repository[]> {
-  return request<Repository[]>("/repositories");
+export function fetchVaults(): Promise<Vault[]> { return request<Vault[]>("/vaults"); }
+export function createVault(name: string): Promise<Vault> {
+  return request<Vault>("/vaults", { method: "POST", body: JSON.stringify({ name }) });
 }
-
-export function createRepository(name: string, url: string, token?: string): Promise<Repository> {
-  return request<Repository>("/repositories", { method: "POST", body: JSON.stringify({ name, url, token }) });
+export function updateVault(id: string, name: string): Promise<Vault> {
+  return request<Vault>(`/vaults/${encodeURIComponent(id)}`, { method: "PUT", body: JSON.stringify({ name }) });
 }
-
-export function createStack(input: Pick<Stack, "name" | "configurations">): Promise<Stack> {
-  return request<Stack>("/stacks", { method: "POST", body: JSON.stringify(input) });
+export function deleteVault(id: string): Promise<void> {
+  return request<void>(`/vaults/${encodeURIComponent(id)}`, { method: "DELETE" });
 }
-
-export function fetchSecretSets(): Promise<SecretSet[]> {
-  return request<SecretSet[]>("/secret-sets");
+export function fetchVaultSecrets(id: string): Promise<Secret[]> {
+  return request<Secret[]>(`/vaults/${encodeURIComponent(id)}/secrets`);
 }
-export function createSecretSet(name: string): Promise<SecretSet> {
-  return request<SecretSet>("/secret-sets", { method: "POST", body: JSON.stringify({ name }) });
-}
-export function deleteSecretSet(id: string): Promise<void> {
-  return request<void>(`/secret-sets/${encodeURIComponent(id)}`, { method: "DELETE" });
-}
-export function fetchSetSecrets(id: string): Promise<Secret[]> {
-  return request<Secret[]>(`/secret-sets/${encodeURIComponent(id)}/secrets`);
-}
-export function createSetSecret(id: string, key: string, value: string): Promise<Secret[]> {
-  return request<Secret[]>(`/secret-sets/${encodeURIComponent(id)}/secrets`, {
-    method: "POST", body: JSON.stringify({ key, value }),
-  });
-}
-export function updateSetSecret(id: string, key: string, value: string): Promise<Secret[]> {
-  return request<Secret[]>(`/secret-sets/${encodeURIComponent(id)}/secrets/${encodeURIComponent(key)}`, {
+export async function putVaultSecret(id: string, key: string, value: string): Promise<Secret[]> {
+  await request<void>(`/vaults/${encodeURIComponent(id)}/secrets/${encodeURIComponent(key)}`, {
     method: "PUT", body: JSON.stringify({ value }),
   });
+  return fetchVaultSecrets(id);
 }
-export function deleteSetSecret(id: string, key: string): Promise<Secret[]> {
-  return request<Secret[]>(`/secret-sets/${encodeURIComponent(id)}/secrets/${encodeURIComponent(key)}`, { method: "DELETE" });
+export async function deleteVaultSecret(id: string, key: string): Promise<Secret[]> {
+  await request<void>(`/vaults/${encodeURIComponent(id)}/secrets/${encodeURIComponent(key)}`, { method: "DELETE" });
+  return fetchVaultSecrets(id);
 }
-export function inheritSecretSets(id: string, inherited_secret_set_ids: string[]): Promise<Secret[]> {
-  return request<Secret[]>(`/stacks/${encodeURIComponent(id)}/secret-sets`, {
-    method: "PUT", body: JSON.stringify({ inherited_secret_set_ids }),
+
+export function deleteFlow(id: string): Promise<void> {
+  return request<void>(`/flows/${encodeURIComponent(id)}`, { method: "DELETE" });
+}
+
+export function updateFlowVaults(flowId: string, inheritedVaultIds: string[]): Promise<Flow> {
+  return request<Flow>(`/flows/${encodeURIComponent(flowId)}/vaults`, {
+    method: "PUT", body: JSON.stringify({ inherited_vault_ids: inheritedVaultIds }),
   });
 }

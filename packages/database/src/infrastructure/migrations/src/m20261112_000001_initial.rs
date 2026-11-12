@@ -1,0 +1,192 @@
+use crate::conventions;
+use sea_orm_migration::prelude::*;
+
+#[derive(DeriveMigrationName)]
+pub struct Migration;
+
+#[async_trait::async_trait]
+impl MigrationTrait for Migration {
+    async fn up(&self, manager: &SchemaManager) -> Result<(), DbErr> {
+        manager
+            .create_table(
+                Table::create()
+                    .table("vaults")
+                    .col(ColumnDef::new("id").uuid().not_null().primary_key())
+                    .col(ColumnDef::new("name").string().not_null().unique_key())
+                    .col(
+                        ColumnDef::new("created_at")
+                            .string()
+                            .not_null()
+                            .default(Expr::current_timestamp()),
+                    )
+                    .col(
+                        ColumnDef::new("updated_at")
+                            .string()
+                            .not_null()
+                            .default(Expr::current_timestamp()),
+                    )
+                    .to_owned(),
+            )
+            .await?;
+        manager
+            .create_table(
+                Table::create()
+                    .table("flows")
+                    .col(ColumnDef::new("id").uuid().not_null().primary_key())
+                    .col(ColumnDef::new("name").string().not_null().unique_key())
+                    .col(ColumnDef::new("vault_id").uuid().not_null().unique_key())
+                    .col(ColumnDef::new("inherited_vault_ids").json().not_null().default("[]"))
+                    .col(
+                        ColumnDef::new("created_at")
+                            .string()
+                            .not_null()
+                            .default(Expr::current_timestamp()),
+                    )
+                    .col(
+                        ColumnDef::new("updated_at")
+                            .string()
+                            .not_null()
+                            .default(Expr::current_timestamp()),
+                    )
+                    .foreign_key(
+                        ForeignKey::create()
+                            .name(conventions::foreign_key_name(
+                                "flows",
+                                &["vault_id"],
+                                "vaults",
+                                &["id"],
+                            ))
+                            .from("flows", "vault_id")
+                            .to("vaults", "id")
+                            .on_delete(ForeignKeyAction::Restrict),
+                    )
+                    .to_owned(),
+            )
+            .await?;
+        manager
+            .create_table(
+                Table::create()
+                    .table("nodes")
+                    .col(ColumnDef::new("id").uuid().not_null().primary_key())
+                    .col(ColumnDef::new("flow_id").uuid().not_null())
+                    .col(ColumnDef::new("name").string().not_null())
+                    .col(ColumnDef::new("kind").string().not_null())
+                    .col(ColumnDef::new("properties").json().not_null().default("{}"))
+                    .col(ColumnDef::new("triggers").json().not_null().default("[]"))
+                    .col(
+                        ColumnDef::new("created_at")
+                            .string()
+                            .not_null()
+                            .default(Expr::current_timestamp()),
+                    )
+                    .col(
+                        ColumnDef::new("updated_at")
+                            .string()
+                            .not_null()
+                            .default(Expr::current_timestamp()),
+                    )
+                    .index(
+                        Index::create()
+                            .name(conventions::unique_constraint_name(
+                                "nodes",
+                                &["flow_id", "name"],
+                            ))
+                            .col("flow_id")
+                            .col("name")
+                            .unique(),
+                    )
+                    .foreign_key(
+                        ForeignKey::create()
+                            .name(conventions::foreign_key_name(
+                                "nodes",
+                                &["flow_id"],
+                                "flows",
+                                &["id"],
+                            ))
+                            .from("nodes", "flow_id")
+                            .to("flows", "id")
+                            .on_delete(ForeignKeyAction::Cascade),
+                    )
+                    .to_owned(),
+            )
+            .await?;
+        manager
+            .create_table(
+                Table::create()
+                    .table("secrets")
+                    .col(ColumnDef::new("id").uuid().not_null().primary_key())
+                    .col(ColumnDef::new("vault_id").uuid().not_null())
+                    .col(ColumnDef::new("key").string().not_null())
+                    .col(ColumnDef::new("value").text().not_null())
+                    .col(
+                        ColumnDef::new("created_at")
+                            .string()
+                            .not_null()
+                            .default(Expr::current_timestamp()),
+                    )
+                    .col(
+                        ColumnDef::new("updated_at")
+                            .string()
+                            .not_null()
+                            .default(Expr::current_timestamp()),
+                    )
+                    .index(
+                        Index::create()
+                            .name(conventions::unique_constraint_name(
+                                "secrets",
+                                &["vault_id", "key"],
+                            ))
+                            .col("vault_id")
+                            .col("key")
+                            .unique(),
+                    )
+                    .foreign_key(
+                        ForeignKey::create()
+                            .name(conventions::foreign_key_name(
+                                "secrets",
+                                &["vault_id"],
+                                "vaults",
+                                &["id"],
+                            ))
+                            .from("secrets", "vault_id")
+                            .to("vaults", "id")
+                            .on_delete(ForeignKeyAction::Cascade),
+                    )
+                    .to_owned(),
+            )
+            .await?;
+        manager
+            .create_table(
+                Table::create()
+                    .table("users")
+                    .col(ColumnDef::new("id").uuid().not_null().primary_key())
+                    .col(ColumnDef::new("username").string().not_null().unique_key())
+                    .check(Expr::col(Alias::new("username")).eq("admin"))
+                    .col(ColumnDef::new("password_hash").string().not_null())
+                    .col(
+                        ColumnDef::new("created_at")
+                            .string()
+                            .not_null()
+                            .default(Expr::current_timestamp()),
+                    )
+                    .col(
+                        ColumnDef::new("updated_at")
+                            .string()
+                            .not_null()
+                            .default(Expr::current_timestamp()),
+                    )
+                    .to_owned(),
+            )
+            .await?;
+        Ok(())
+    }
+    async fn down(&self, manager: &SchemaManager) -> Result<(), DbErr> {
+        for table in ["users", "secrets", "nodes", "flows", "vaults"] {
+            manager.drop_table(Table::drop().table(table).to_owned()).await?;
+        }
+        Ok(())
+    }
+    fn use_transaction(&self) -> Option<bool> {
+        Some(true)
+    }
+}

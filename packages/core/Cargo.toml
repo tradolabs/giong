@@ -5,17 +5,16 @@ edition = "2024"
 description = "A small Git-polling CI/CD runner"
 
 [dependencies]
+aes-gcm = "0.11.1"
+giong-kv = { path = "../kv" }
+giong-node = { path = "../node" }
 giong-di = { path = "../di" }
 giong-database = { path = "../database" }
-giong-git = { path = "../git" }
-giong-storage = { path = "../storage" }
 giong-publisher = { path = "../publisher" }
-giong-runner = { path = "../runner" }
 tokio = { workspace = true, features = ["fs", "sync"] }
 anyhow.workspace = true
 async-trait.workspace = true
 uuid = { workspace = true, features = ["serde"] }
-aes-gcm = "0.11.1"
 argon2 = "0.6.0"
 base64 = "0.23.1"
 jsonwebtoken = { version = "11.1", default-features = false, features = ["aws_lc_rs"] }

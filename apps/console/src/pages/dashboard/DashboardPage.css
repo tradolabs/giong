@@ -103,47 +103,47 @@
 }
 .job-error { margin: 0; padding: 12px 16px; color: var(--danger); border-bottom: 1px solid var(--border-subtle); }
 
-.stack-pane .pane-body { padding: 12px; }
-.stack-card {
+.flow-pane .pane-body { padding: 12px; }
+.flow-card {
   position: relative; display: block; margin-bottom: 10px; padding: 0;
   border: 1px solid var(--border-subtle); border-radius: 10px;
   background: var(--bg-surface); overflow: hidden;
   transition: border-color .16s ease, box-shadow .16s ease, background .16s ease;
 }
-.stack-card:hover { border-color: var(--border-strong); background: var(--bg-code); box-shadow: 0 3px 12px #2532470a; }
-.stack-card.active { border-color: var(--accent-border); background: var(--accent-soft); box-shadow: inset 3px 0 var(--accent); }
-.stack-card-select {
+.flow-card:hover { border-color: var(--border-strong); background: var(--bg-code); box-shadow: 0 3px 12px #2532470a; }
+.flow-card.active { border-color: var(--accent-border); background: var(--accent-soft); box-shadow: inset 3px 0 var(--accent); }
+.flow-card-select {
   display: flex; flex-direction: column; gap: 9px; min-width: 0; width: 100%;
   padding: 16px; border: 0; border-radius: inherit; background: transparent;
   color: inherit; text-align: left;
 }
-.stack-card-heading { display: flex; align-items: center; gap: 10px; width: 100%; min-width: 0; padding-right: 28px; margin-bottom: 3px; }
-.stack-card-heading .item-name { font-weight: 600; }
-.stack-card-symbol {
+.flow-card-heading { display: flex; align-items: center; gap: 10px; width: 100%; min-width: 0; padding-right: 28px; margin-bottom: 3px; }
+.flow-card-heading .item-name { font-weight: 600; }
+.flow-card-symbol {
   display: grid; place-items: center; flex: none; width: 30px; height: 30px;
   border: 1px solid var(--border-subtle); border-radius: 8px;
   background: var(--bg-surface); color: var(--text-secondary);
 }
-.stack-card.active .stack-card-symbol { border-color: var(--accent-border); color: var(--accent); }
-.stack-card-symbol svg { width: 18px; height: 18px; }
-.stack-card .item-meta { width: 100%; gap: 7px; }
-.stack-card .item-meta svg, .stack-card-footer svg { width: 13px; height: 13px; flex: none; }
-.stack-card-footer { display: flex; align-items: center; gap: 10px; width: 100%; min-width: 0; margin-top: 4px; }
-.stack-card-footer .branch-tag {
+.flow-card.active .flow-card-symbol { border-color: var(--accent-border); color: var(--accent); }
+.flow-card-symbol svg { width: 18px; height: 18px; }
+.flow-card .item-meta { width: 100%; gap: 7px; }
+.flow-card .item-meta svg, .flow-card-footer svg { width: 13px; height: 13px; flex: none; }
+.flow-card-footer { display: flex; align-items: center; gap: 10px; width: 100%; min-width: 0; margin-top: 4px; }
+.flow-card-footer .branch-tag {
   display: inline-flex; align-items: center; gap: 5px; max-width: 65%; padding: 4px 7px; border-radius: 5px;
 }
-.stack-card-footer .branch-tag span { overflow: hidden; text-overflow: ellipsis; }
-.stack-card-commit { color: var(--text-muted); font-size: 10px; }
-.stack-card-settings {
+.flow-card-footer .branch-tag span { overflow: hidden; text-overflow: ellipsis; }
+.flow-card-commit { color: var(--text-muted); font-size: 10px; }
+.flow-card-settings {
   position: absolute; top: 15px; right: 11px; display: grid; place-items: center;
   width: 30px; height: 30px; padding: 6px; border: 1px solid transparent; border-radius: 7px;
   background: transparent; color: var(--text-secondary);
   transition: background .16s ease, border-color .16s ease, color .16s ease;
 }
-.stack-card-settings svg { width: 17px; height: 17px; }
-.stack-card-settings:hover { border-color: var(--border-subtle); background: var(--bg-surface); color: var(--accent); }
-.stack-card-select:focus-visible { outline: 2px solid var(--accent); outline-offset: -3px; }
-.stack-card-settings:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.flow-card-settings svg { width: 17px; height: 17px; }
+.flow-card-settings:hover { border-color: var(--border-subtle); background: var(--bg-surface); color: var(--accent); }
+.flow-card-select:focus-visible { outline: 2px solid var(--accent); outline-offset: -3px; }
+.flow-card-settings:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 
-.stack-pane .pane-header { flex-wrap: wrap; }
+.flow-pane .pane-header { flex-wrap: wrap; }
 @media (max-width: 680px) { .topbar { flex-wrap: wrap; gap: 10px; padding-top: 10px; padding-bottom: 10px; } }

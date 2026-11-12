@@ -2,16 +2,16 @@ use uuid::Uuid;
 
 #[derive(Clone, Debug)]
 pub enum QueueEvent {
-    RunJob(RunJobEvent),
+    RunNode(RunNodeEvent),
 }
 
 #[derive(Clone, Debug, serde::Serialize, serde::Deserialize)]
-pub struct RunJobEvent {
-    pub job_id: Uuid,
+pub struct RunNodeEvent {
+    pub run_id: Uuid,
 }
 
-impl From<RunJobEvent> for QueueEvent {
-    fn from(event: RunJobEvent) -> Self {
-        Self::RunJob(event)
+impl From<RunNodeEvent> for QueueEvent {
+    fn from(event: RunNodeEvent) -> Self {
+        Self::RunNode(event)
     }
 }

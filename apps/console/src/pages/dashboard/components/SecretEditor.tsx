@@ -1,12 +1,10 @@
 import { useEffect, useRef, useState } from "react";
-import { createSecret, deleteSecret, fetchSecrets, updateSecret,
-  createSetSecret, deleteSetSecret, fetchSetSecrets, updateSetSecret } from "../../../api/requests";
+import { putVaultSecret, deleteVaultSecret, fetchVaultSecrets } from "../../../api/requests";
 import { UnauthorizedError } from "../../../api/exception";
 import type { Secret } from "../../../types/secret";
 
 interface Props {
   ownerId: string;
-  scope: "stack" | "set";
   revision?: number;
   onSignOut: () => void;
 }
@@ -25,11 +23,10 @@ function newRow(key = ""): Row {
   return { id: `secret-${++nextId}`, key, value: "", saved: false, changed: false };
 }
 
-export function SecretEditor({ ownerId, scope, revision = 0, onSignOut }: Props) {
+export function SecretEditor({ ownerId, revision = 0, onSignOut }: Props) {
   const active = useRef(true);
   const requests = useRef(new Set<string>());
   const [rows, setRows] = useState<Row[]>([]);
-  const [inherited, setInherited] = useState<Secret[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -37,10 +34,9 @@ export function SecretEditor({ ownerId, scope, revision = 0, onSignOut }: Props)
     active.current = true;
     let current = true;
     setLoading(true); setError(null);
-    (scope === "stack" ? fetchSecrets : fetchSetSecrets)(ownerId).then((secrets) => {
+    fetchVaultSecrets(ownerId).then((secrets) => {
       if (!current) return;
-      setInherited(secrets.filter((secret) => secret.source));
-      const local = secrets.filter((secret) => !secret.source);
+      const local = secrets;
       setRows((previous) => {
         const saved = local.map((secret) => {
           const draft = previous.find((row) => row.saved && row.key === secret.key);
@@ -55,7 +51,7 @@ export function SecretEditor({ ownerId, scope, revision = 0, onSignOut }: Props)
       else setError(err instanceof Error ? err.message : "Could not load secrets");
     }).finally(() => { if (current) setLoading(false); });
     return () => { current = false; active.current = false; };
-  }, [ownerId, scope, revision, onSignOut]);
+  }, [ownerId, revision, onSignOut]);
 
   function change(id: string, changes: Partial<Row>) {
     setRows((current) => current.map((row) => row.id === id ? { ...row, ...changes } : row));
@@ -68,9 +64,8 @@ export function SecretEditor({ ownerId, scope, revision = 0, onSignOut }: Props)
     requests.current.add(row.id);
     change(row.id, { pending: true, error: undefined, message: undefined });
     try {
-      const result = await action();
+      await action();
       if (!active.current) return false;
-      setInherited(result.filter((secret) => secret.source));
       return true;
     } catch (err) {
       if (err instanceof UnauthorizedError) onSignOut();
@@ -85,30 +80,22 @@ export function SecretEditor({ ownerId, scope, revision = 0, onSignOut }: Props)
     if (rows.some((other) => other.id !== row.id && other.key === row.key)) {
       change(row.id, { error: "This key is already in the list." }); return;
     }
-    const create = scope === "stack" ? createSecret : createSetSecret;
-    const update = scope === "stack" ? updateSecret : updateSetSecret;
+    const create = putVaultSecret;
+    const update = putVaultSecret;
     if (await perform(row, () => row.saved ? update(ownerId, row.key, row.value)
       : create(ownerId, row.key, row.value))) {
       change(row.id, { saved: true, changed: false, value: "", message: "Saved." });
     }
   }
   async function remove(row: Row) {
-    if (!row.saved || await perform(row, () => (scope === "stack" ? deleteSecret : deleteSetSecret)(ownerId, row.key))) {
+    if (!row.saved || await perform(row, () => deleteVaultSecret(ownerId, row.key))) {
       setRows((current) => current.filter((entry) => entry.id !== row.id));
     }
   }
 
   return <div className="secret-editor">
     {loading && <p role="status">Loading secrets…</p>}
-    {inherited.length > 0 && <section className="inherited-secrets" aria-label="Inherited secrets">
-      <h3>Inherited secrets</h3>
-      {inherited.map((secret) => <div className="inherited-secret" key={secret.key}>
-        <div><code>{secret.key}</code><small>{secret.source}</small></div>
-        <button type="button" className="btn-ghost" disabled={rows.some((row) => row.key === secret.key)}
-          onClick={() => setRows((current) => [...current, newRow(secret.key)])}>Override</button>
-      </div>)}
-    </section>}
-    <p className="secrets-hint">Values are available as environment variables and read-only files at /run/secrets/KEY. The runner plugin chooses how to use them.</p>
+    <p className="secrets-hint">Reference a secret key in node inputs. The host resolves it from the flow’s vaults.</p>
     <div className="secret-rows">
       {rows.map((row) => <form key={row.id} className="secret-row" aria-label={row.key || "New secret"}
         aria-busy={row.pending} onSubmit={(event) => { event.preventDefault(); void save(row); }}>

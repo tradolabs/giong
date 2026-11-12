@@ -1,0 +1,66 @@
+.flow-settings-form { display: grid; gap: 16px; }
+.flow-settings-form label { display: grid; gap: 8px; }
+.flow-settings-form textarea, .flow-settings-form select {
+  width: 100%; padding: 10px 12px; border: 1px solid var(--border-subtle);
+  border-radius: 6px; background: var(--bg-surface); color: inherit; font: inherit;
+}
+
+.flow-settings-form textarea { font-family: var(--font-mono); resize: vertical; }
+
+.flow-settings-form pre { overflow: auto; max-height: 240px; font-size: 12px; }
+
+.runner-configuration-section {
+  min-width: 0; margin: 0; padding: 16px;
+  border: 1px solid var(--border-subtle); border-radius: 8px;
+}
+.runner-configuration-section legend {
+  padding: 0 6px; font-size: 13px; font-weight: 600;
+}
+
+.configuration-editor { display: grid; gap: 10px; }
+.configuration-editor textarea { min-height: 220px; tab-size: 2; line-height: 1.7; }
+.configuration-reference { color: var(--text-secondary); font-size: 12px; }
+.configuration-reference summary { cursor: pointer; }
+.configuration-reference dl { display: grid; gap: 12px; margin-bottom: 0; }
+.configuration-reference dl > div { display: grid; grid-template-columns: minmax(100px, 1fr) 2fr; gap: 12px; }
+.configuration-reference dd { margin: 0; line-height: 1.6; }
+.secret-editor, .secret-rows { display: grid; gap: 16px; }
+.secret-row { display: grid; gap: 12px; padding: 16px; border: 1px solid var(--border-subtle); border-radius: 8px; }
+.secret-row label { display: grid; gap: 8px; }
+.secret-row input { margin-top: 0; }
+.secret-row input[type="file"] { height: auto; padding: 8px; }
+.secret-editor > .secrets-hint { margin: 0; }
+.secret-inheritance { display: grid; gap: 12px; padding-bottom: 20px; border-bottom: 1px solid var(--border-subtle); }
+.secret-inheritance h3, .inherited-secrets h3 { margin: 0; font-size: 13px; font-weight: 600; }
+.secret-inheritance .secrets-hint { margin: 0; }
+.secret-set-choices { display: flex; flex-wrap: wrap; gap: 8px; }
+.flow-settings-form .secret-set-choice { display: flex; align-items: center; gap: 8px; padding: 8px 10px; border: 1px solid var(--border-subtle); border-radius: 6px; }
+.secrets-dialog .secret-set-choice input { width: 14px; height: 14px; margin: 0; accent-color: var(--accent); }
+.secret-set-order { display: grid; gap: 8px; margin: 0; padding: 0; list-style: none; }
+.secret-set-order li { display: flex; align-items: center; gap: 6px; }
+.secret-set-order li > span { flex: 1; font-size: 12px; }
+.secret-set-create { display: flex; align-items: end; gap: 12px; }
+.secret-set-create label { flex: 1; min-width: 0; }
+.secret-set-create > button { margin-bottom: 2px; }
+.inherited-secrets, .vault-list { display: grid; gap: 12px; }
+.inherited-secret { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 12px; border-radius: 6px; background: var(--bg-soft); }
+.inherited-secret > div { display: grid; gap: 5px; min-width: 0; overflow-wrap: anywhere; font-size: 12px; }
+.inherited-secret small { color: var(--text-secondary); }
+@media (max-width: 520px) {
+  .secret-set-create { flex-wrap: wrap; }
+}
+
+.flow-nodes-editor { display: grid; gap: 16px; min-width: 0; }
+.flow-nodes-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.flow-nodes-heading h3 { margin: 0; font-size: 14px; }
+.flow-nodes-editor > .secrets-hint { margin: 0; }
+.flow-node-configuration { display: grid; gap: 14px; min-width: 0; margin: 0; padding: 16px; border: 1px solid var(--border-subtle); border-radius: 8px; }
+.flow-node-configuration legend { max-width: 100%; overflow-wrap: anywhere; padding: 0 6px; font-size: 13px; font-weight: 600; }
+.flow-node-fields { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.flow-node-fields label { min-width: 0; }
+.flow-node-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.flow-node-actions > :last-child { margin-left: auto; }
+@media (max-width: 520px) { .flow-node-fields { grid-template-columns: 1fr; } }
+
+.flow-delete-section { border-top: 1px solid var(--border-subtle); }
+.flow-delete-section > p { margin-top: 0; }
