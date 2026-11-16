@@ -1,113 +1,183 @@
 import "./DashboardPage.css";
-import { useEffect, useRef, useState } from "react";
-import { UnauthorizedError } from "../../api/exception";
-import { fetchNodeRuns, fetchFlows, runNode } from "../../api/requests";
-import type { NodeRun } from "../../types/node-run";
-import type { Flow } from "../../types/flow";
-import { NodeLogsDialog } from "./components/NodeLogsDialog";
-import { FlowCanvas } from "./components/FlowCanvas";
-import { FlowPane } from "./components/FlowPane";
-import { FlowSettingsDialog } from "./components/FlowSettingsDialog";
+import { useEffect, useState } from "react";
+import type { Flow, FlowNode } from "../../types/flow";
 import { AddFlowDialog } from "./components/AddFlowDialog";
-import { GlobalSettingsDialog } from "./components/GlobalSettingsDialog";
+import { Flow as FlowView } from "./components/Flow";
+import { FlowList } from "./components/FlowList";
+import { FlowSettingsDialog } from "./components/FlowSettingsDialog";
+import { GlobalSettings } from "./components/GlobalSettings";
+import { Sidebar } from "./components/Sidebar";
+import { NodeDialog } from "./components/NodeDialog";
+import { NodeDetailsDialog } from "./components/NodeDetailsDialog";
+import { useDashboardData } from "./hooks/useDashboardData";
+
+function selectedFlowFromUrl(hash: string): string | null {
+  const match = hash.match(/^#\/flows\/([^/]+)$/);
+  if (!match) return null;
+  try { return decodeURIComponent(match[1]); } catch { return null; }
+}
 
 export function DashboardPage({ onSignOut }: { onSignOut: () => void }) {
-  const flowRevision = useRef(0);
-  const runRevision = useRef(0);
-  const [addingFlow, setAddingFlow] = useState(false);
-  const [showSettings, setShowSettings] = useState(false);
-  const [flows, setFlows] = useState<Flow[]>([]);
-  const [selectedFlowId, setSelectedFlowId] = useState<string | null>(null);
-  const [runs, setRuns] = useState<NodeRun[]>([]);
-  const [logsNodeId, setLogsNodeId] = useState<string | null>(null);
-  const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
-  const [submitting, setSubmitting] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [settingsFlow, setSettingsFlow] = useState<Flow | null>(null);
-  const [settingsTab, setSettingsTab] = useState<"general" | "secrets">("general");
-  const selectedFlow = flows.find(flow => flow.id === selectedFlowId);
-
-  useEffect(() => {
-    let active = true;
-    async function load() {
-      try {
-        const revision = flowRevision.current;
-        const data = await fetchFlows();
-        if (!active || revision !== flowRevision.current) return;
-        setFlows(data);
-        setSelectedFlowId(current => current && data.some(flow => flow.id === current) ? current : data[0]?.id ?? null);
-      } catch (err) { if (err instanceof UnauthorizedError) onSignOut(); }
-    }
-    void load();
-    const timer = window.setInterval(load, 5000);
-    return () => { active = false; window.clearInterval(timer); };
-  }, [onSignOut]);
-
-  useEffect(() => {
-    setSelectedNodeId(current => current && selectedFlow?.nodes.some(node => node.id === current) ? current : selectedFlow?.nodes[0]?.id ?? null);
-  }, [selectedFlowId, selectedFlow?.nodes]);
-
-  useEffect(() => {
-    setRuns([]); setError(null); setLogsNodeId(null);
-    if (!selectedFlowId) return;
-    let active = true;
-    const id = selectedFlowId;
-    async function load() {
-      try {
-        const revision = runRevision.current;
-        const data = await fetchNodeRuns(id);
-        if (active && revision === runRevision.current) setRuns(data);
-      } catch (err) {
-        if (!active) return;
-        if (err instanceof UnauthorizedError) onSignOut();
-        else setError(err instanceof Error ? err.message : "Could not load node status");
-      }
-    }
-    void load();
-    const timer = window.setInterval(load, 2000);
-    return () => { active = false; window.clearInterval(timer); };
-  }, [selectedFlowId, onSignOut]);
-
-  async function executeNode(nodeId: string) {
-    if (!selectedFlowId || submitting) return;
-    setSubmitting(nodeId); setSelectedNodeId(nodeId); setError(null);
+  const [route, setRoute] = useState(() => window.location.hash);
+  const [sidebarExpanded, setSidebarExpanded] = useState(() => {
     try {
-      const run = await runNode(selectedFlowId, nodeId);
-      runRevision.current += 1;
-      setRuns(current => [run, ...current.filter(item => item.id !== run.id)]);
-    } catch (err) {
-      if (err instanceof UnauthorizedError) onSignOut();
-      else setError(err instanceof Error ? err.message : "Could not run node");
-    } finally { setSubmitting(null); }
-  }
+      const saved = localStorage.getItem("giong_sidebar_expanded");
+      if (saved !== null) return saved === "true";
+    } catch { /* Use the viewport default when storage is unavailable. */ }
+    return window.matchMedia("(min-width: 760px)").matches;
+  });
+  const selectedFlowId = selectedFlowFromUrl(route);
+  const isSetting = route === "#/settings";
+  const {
+    flows,
+    selectedFlow,
+    loading,
+    executions,
+    selectedNodeId,
+    setSelectedNodeId,
+    submitting,
+    error,
+    executeNode,
+    addFlow,
+    updateFlowInList,
+    removeFlow,
+    removeNode,
+  } = useDashboardData(onSignOut, selectedFlowId, !isSetting);
+
+  const [nodeEditor, setNodeEditor] = useState<{ flowId: string; node?: FlowNode } | null>(null);
+  const [addingFlow, setAddingFlow] = useState(false);
+  const [logsNodeId, setLogsNodeId] = useState<string | null>(null);
+  const [settingsFlow, setSettingsFlow] = useState<Flow | null>(null);
+  const [settingsTab, setSettingsTab] = useState<"general" | "secrets">(
+    "general",
+  );
+
   const logsNode = selectedFlow?.nodes.find(node => node.id === logsNodeId);
 
-  return <div className="app-shell">
-    <header className="topbar">
-      <div className="topbar-brand"><span className="brand-mark" aria-hidden="true">G</span><span className="topbar-logo">Giong</span><span className="topbar-tag">Console</span><span className="topbar-context">CI/CD</span></div>
-      <div className="topbar-actions"><button className="btn-ghost" type="button" onClick={() => setShowSettings(true)}>Settings</button><button className="btn-ghost" type="button" onClick={onSignOut}>Sign out</button></div>
-    </header>
-    <main className="workspace canvas-workspace">
-      <FlowPane flows={flows} selectedFlowId={selectedFlowId} onSelectFlow={setSelectedFlowId}
-        onSettings={flow => { setSettingsTab("general"); setSettingsFlow(flow); }} onAddFlow={() => setAddingFlow(true)} />
-      <div className="flow-canvas-content">
-        <FlowCanvas key={selectedFlowId} flow={selectedFlow} runs={runs} selected={selectedNodeId} submitting={submitting} error={error}
-          onSelect={id => { setSelectedNodeId(id); setLogsNodeId(id); }} onRun={nodeId => { void executeNode(nodeId); }}
-          onSettings={() => { if (selectedFlow) { setSettingsTab("general"); setSettingsFlow(selectedFlow); } }} />
+  useEffect(() => {
+    function navigate() {
+      setRoute(window.location.hash);
+      setLogsNodeId(null);
+      setSettingsFlow(null);
+      setNodeEditor(null);
+    }
+    window.addEventListener("hashchange", navigate);
+    return () => window.removeEventListener("hashchange", navigate);
+  }, []);
+
+  function showFlows() {
+    window.location.hash = "/flows";
+    setRoute("#/flows");
+    setLogsNodeId(null);
+  }
+
+  function openFlowSettings(flow: Flow, tab: "general" | "secrets" = "general") {
+    setSettingsTab(tab);
+    setSettingsFlow(flow);
+  }
+
+  return (
+    <div className={`app-shell${sidebarExpanded ? " sidebar-open" : ""}`}>
+      <Sidebar
+        expanded={sidebarExpanded}
+        active={isSetting ? "setting" : "flow"}
+        onToggle={() => {
+          const expanded = !sidebarExpanded;
+          setSidebarExpanded(expanded);
+          try { localStorage.setItem("giong_sidebar_expanded", String(expanded)); } catch { /* Keep the preference for this session. */ }
+        }}
+        onNavigate={() => {
+          if (window.matchMedia("(max-width: 759px)").matches) setSidebarExpanded(false);
+        }}
+        onSignOut={onSignOut}
+      />
+      {sidebarExpanded && <button className="sidebar-backdrop" type="button" aria-label="Close navigation" onClick={() => setSidebarExpanded(false)} />}
+      <div className="app-main">
+        <main className={isSetting ? "settings-screen" : selectedFlowId ? "flow-details-screen" : "flows-screen"}>
+          {isSetting ? <GlobalSettings onSignOut={onSignOut} /> : !selectedFlowId ? (
+            <FlowList flows={flows} loading={loading} error={error} onSettings={flow => openFlowSettings(flow)} onAddFlow={() => setAddingFlow(true)} />
+          ) : (
+            <>
+              <nav className="flow-breadcrumb" aria-label="Breadcrumb">
+                <a href="#/flows">Flows</a><span aria-hidden="true">/</span><span>{selectedFlow?.name ?? "Flow"}</span>
+              </nav>
+              {loading ? <p role="status">Loading flow…</p> : selectedFlow ? (
+                <FlowView
+                  key={selectedFlowId}
+                  flow={selectedFlow}
+                  executions={executions}
+                  selected={selectedNodeId}
+                  submitting={submitting}
+                  error={error}
+                  onSelect={(id) => { setSelectedNodeId(id); setLogsNodeId(id); }}
+                  onExecute={(nodeId) => { void executeNode(nodeId); }}
+                  onSettings={() => openFlowSettings(selectedFlow)}
+                  onAddNode={() => setNodeEditor({ flowId: selectedFlow.id })}
+                  onEditNode={node => setNodeEditor({ flowId: selectedFlow.id, node })}
+                />
+              ) : <div className="empty-state"><p className="empty-state-title">Flow not found</p><button className="btn-ghost" type="button" onClick={showFlows}>Back to flows</button></div>}
+            </>
+          )}
+        </main>
+        {nodeEditor && selectedFlow && nodeEditor.flowId === selectedFlow.id && (
+          <NodeDialog
+            flow={selectedFlow}
+            node={nodeEditor.node}
+            onClose={() => setNodeEditor(null)}
+            onSignOut={onSignOut}
+            onDeleted={nodeId => {
+              removeNode(nodeId);
+              if (logsNodeId === nodeId) setLogsNodeId(null);
+            }}
+            onSaved={(saved) => {
+              const exists = selectedFlow.nodes.some(node => node.id === saved.id);
+              updateFlowInList({ ...selectedFlow, nodes: exists
+                ? selectedFlow.nodes.map(node => node.id === saved.id ? saved : node)
+                : [...selectedFlow.nodes, saved] });
+            }}
+          />
+        )}
+        {logsNode && selectedFlow && (
+          <NodeDetailsDialog
+            key={logsNode.id}
+            flowId={selectedFlow.id}
+            node={logsNode}
+            executions={executions}
+            onClose={() => setLogsNodeId(null)}
+            onSignOut={onSignOut}
+          />
+        )}
+        {addingFlow && (
+          <AddFlowDialog
+            onClose={() => setAddingFlow(false)}
+            onSignOut={onSignOut}
+            onCreated={(flow) => {
+              addFlow(flow);
+              window.location.hash = `/flows/${encodeURIComponent(flow.id)}`;
+              setRoute(window.location.hash);
+            }}
+          />
+        )}
+        {settingsFlow && (
+          <FlowSettingsDialog
+            key={settingsFlow.id}
+            flow={settingsFlow}
+            initialTab={settingsTab}
+            onClose={() => setSettingsFlow(null)}
+            onSignOut={onSignOut}
+            onDeleted={(id) => {
+              if (selectedFlowId === id) setLogsNodeId(null);
+              removeFlow(id);
+              setSettingsFlow(null);
+              if (selectedFlowId === id) showFlows();
+            }}
+            onSaved={(updated) => {
+              updateFlowInList(updated);
+              setSettingsFlow(updated);
+            }}
+          />
+        )}
       </div>
-    </main>
-    {logsNode && <NodeLogsDialog node={logsNode} runs={runs} onClose={() => setLogsNodeId(null)} onSignOut={onSignOut} />}
-    {addingFlow && <AddFlowDialog onClose={() => setAddingFlow(false)} onSignOut={onSignOut} onCreated={flow => {
-      flowRevision.current += 1; setFlows(current => [flow, ...current]); setSelectedFlowId(flow.id); setSettingsTab("secrets"); setSettingsFlow(flow);
-    }} />}
-    {showSettings && <GlobalSettingsDialog onClose={() => setShowSettings(false)} onSignOut={onSignOut} />}
-    {settingsFlow && <FlowSettingsDialog key={settingsFlow.id} flow={settingsFlow} initialTab={settingsTab} onClose={() => setSettingsFlow(null)} onSignOut={onSignOut}
-      onDeleted={id => {
-        flowRevision.current += 1; setFlows(current => current.filter(flow => flow.id !== id));
-        if (selectedFlowId === id) { setSelectedFlowId(flows.find(flow => flow.id !== id)?.id ?? null); setRuns([]); setSelectedNodeId(null); }
-        setSettingsFlow(null);
-      }} onSaved={updated => {
-        flowRevision.current += 1; setFlows(current => current.map(flow => flow.id === updated.id ? updated : flow)); setSettingsFlow(updated);
-      }} />}
-  </div>;
+    </div>
+  );
 }

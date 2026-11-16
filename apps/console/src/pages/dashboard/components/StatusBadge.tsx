@@ -1,15 +1,15 @@
 import "./StatusBadge.css";
-import type { RunStatus } from "../../../types/node-run";
+import type { ExecutionStatus } from "../../../types/node-execution";
 
-const STATUS_LABELS: Record<RunStatus, string> = {
+const STATUS_LABELS: Record<ExecutionStatus, string> = {
   pending: "Pending",
-  running: "Running",
+  executing: "Executing",
   succeeded: "Succeeded",
   failed: "Failed",
   interrupted: "Interrupted",
 };
 
-export function StatusBadge({ status }: { status: RunStatus }) {
+export function StatusBadge({ status }: { status: ExecutionStatus }) {
   return (
     <span className={`status-badge status-${status}`}>
       <span className="status-dot" />

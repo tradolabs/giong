@@ -1,66 +1,410 @@
-.flow-settings-form { display: grid; gap: 16px; }
-.flow-settings-form label { display: grid; gap: 8px; }
-.flow-settings-form textarea, .flow-settings-form select {
-  width: 100%; padding: 10px 12px; border: 1px solid var(--border-subtle);
-  border-radius: 6px; background: var(--bg-surface); color: inherit; font: inherit;
+.flow-settings-form {
+  display: grid;
+  gap: 16px;
 }
 
-.flow-settings-form textarea { font-family: var(--font-mono); resize: vertical; }
+.flow-settings-form label {
+  display: grid;
+  gap: 8px;
+}
 
-.flow-settings-form pre { overflow: auto; max-height: 240px; font-size: 12px; }
+.flow-settings-form textarea, .flow-settings-form select {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid var(--border-subtle);
+  border-radius: 6px;
+  background: var(--bg-surface);
+  color: inherit;
+  font: inherit;
+}
+
+.flow-settings-form textarea {
+  font-family: var(--font-mono);
+  resize: vertical;
+}
+
+.flow-settings-form pre {
+  overflow: auto;
+  max-height: 240px;
+  font-size: 12px;
+}
 
 .runner-configuration-section {
-  min-width: 0; margin: 0; padding: 16px;
-  border: 1px solid var(--border-subtle); border-radius: 8px;
+  min-width: 0;
+  margin: 0;
+  padding: 16px;
+  border: 1px solid var(--border-subtle);
+  border-radius: 8px;
 }
+
 .runner-configuration-section legend {
-  padding: 0 6px; font-size: 13px; font-weight: 600;
+  padding: 0 6px;
+  font-size: 13px;
+  font-weight: 600;
 }
 
-.configuration-editor { display: grid; gap: 10px; }
-.configuration-editor textarea { min-height: 220px; tab-size: 2; line-height: 1.7; }
-.configuration-reference { color: var(--text-secondary); font-size: 12px; }
-.configuration-reference summary { cursor: pointer; }
-.configuration-reference dl { display: grid; gap: 12px; margin-bottom: 0; }
-.configuration-reference dl > div { display: grid; grid-template-columns: minmax(100px, 1fr) 2fr; gap: 12px; }
-.configuration-reference dd { margin: 0; line-height: 1.6; }
-.secret-editor, .secret-rows { display: grid; gap: 16px; }
-.secret-row { display: grid; gap: 12px; padding: 16px; border: 1px solid var(--border-subtle); border-radius: 8px; }
-.secret-row label { display: grid; gap: 8px; }
-.secret-row input { margin-top: 0; }
-.secret-row input[type="file"] { height: auto; padding: 8px; }
-.secret-editor > .secrets-hint { margin: 0; }
-.secret-inheritance { display: grid; gap: 12px; padding-bottom: 20px; border-bottom: 1px solid var(--border-subtle); }
-.secret-inheritance h3, .inherited-secrets h3 { margin: 0; font-size: 13px; font-weight: 600; }
-.secret-inheritance .secrets-hint { margin: 0; }
-.secret-set-choices { display: flex; flex-wrap: wrap; gap: 8px; }
-.flow-settings-form .secret-set-choice { display: flex; align-items: center; gap: 8px; padding: 8px 10px; border: 1px solid var(--border-subtle); border-radius: 6px; }
-.secrets-dialog .secret-set-choice input { width: 14px; height: 14px; margin: 0; accent-color: var(--accent); }
-.secret-set-order { display: grid; gap: 8px; margin: 0; padding: 0; list-style: none; }
-.secret-set-order li { display: flex; align-items: center; gap: 6px; }
-.secret-set-order li > span { flex: 1; font-size: 12px; }
-.secret-set-create { display: flex; align-items: end; gap: 12px; }
-.secret-set-create label { flex: 1; min-width: 0; }
-.secret-set-create > button { margin-bottom: 2px; }
-.inherited-secrets, .vault-list { display: grid; gap: 12px; }
-.inherited-secret { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 12px; border-radius: 6px; background: var(--bg-soft); }
-.inherited-secret > div { display: grid; gap: 5px; min-width: 0; overflow-wrap: anywhere; font-size: 12px; }
-.inherited-secret small { color: var(--text-secondary); }
+.configuration-editor {
+  display: grid;
+  gap: 10px;
+}
+
+.configuration-editor textarea {
+  min-height: 220px;
+  tab-size: 2;
+  line-height: 1.7;
+}
+
+.configuration-reference {
+  color: var(--text-secondary);
+  font-size: 12px;
+}
+
+.configuration-reference summary {
+  cursor: pointer;
+}
+
+.configuration-reference dl {
+  display: grid;
+  gap: 12px;
+  margin-bottom: 0;
+}
+
+.configuration-reference dl > div {
+  display: grid;
+  grid-template-columns: minmax(100px, 1fr) 2fr;
+  gap: 12px;
+}
+
+.configuration-reference dd {
+  margin: 0;
+  line-height: 1.6;
+}
+
+.secret-editor {
+  display: grid;
+  gap: 16px;
+}
+
+.secret-form {
+  display: grid;
+  gap: 12px;
+  padding: 16px;
+  border: 1px solid var(--border-subtle);
+  border-radius: 6px;
+  background: var(--bg-code);
+}
+
+.secret-form label {
+  display: grid;
+  gap: 8px;
+}
+
+.secret-row-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.secret-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.secret-list li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.secret-list code {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  font: 12px var(--font-mono);
+}
+
+.secret-form input {
+  margin-top: 0;
+}
+
+.secret-inheritance {
+  display: grid;
+  gap: 12px;
+  padding-bottom: 20px;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.secret-inheritance h3, .inherited-secrets h3 {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.secret-inheritance .ui-hint {
+  margin: 0;
+}
+
+.secret-set-choices {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.flow-settings-form .secret-set-choice {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border: 1px solid var(--border-subtle);
+  border-radius: 6px;
+}
+
+:is(.ui-dialog, .ui-settings) .secret-set-choice input {
+  width: 14px;
+  height: 14px;
+  margin: 0;
+  accent-color: var(--accent);
+}
+
+.secret-set-order {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.secret-set-order li {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.secret-set-order li > span {
+  flex: 1;
+  font-size: 12px;
+}
+
+.secret-set-create {
+  display: flex;
+  align-items: end;
+  gap: 12px;
+}
+
+.secret-set-create label {
+  flex: 1;
+  min-width: 0;
+}
+
+.secret-set-create > button {
+  margin-bottom: 2px;
+}
+
+.inherited-secrets, .vault-list {
+  display: grid;
+  gap: 12px;
+}
+
+.inherited-vault-secrets {
+  padding: 16px;
+  border: 1px solid var(--border-subtle);
+  border-radius: 6px;
+}
+
+.inherited-vault-secrets h3 {
+  margin: 0;
+  font-size: 13px;
+  overflow-wrap: anywhere;
+}
+
+.inherited-vault-readonly {
+  flex-shrink: 0;
+  color: var(--text-secondary);
+  font-size: 12px;
+}
+
+.inherited-secret {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  border-radius: 6px;
+  background: var(--bg-soft);
+}
+
+.inherited-secret > div {
+  display: grid;
+  gap: 5px;
+  min-width: 0;
+  overflow-wrap: anywhere;
+  font-size: 12px;
+}
+
+.inherited-secret small {
+  color: var(--text-secondary);
+}
+
 @media (max-width: 520px) {
-  .secret-set-create { flex-wrap: wrap; }
+  .secret-set-create {
+    flex-wrap: wrap;
+  }
 }
 
-.flow-nodes-editor { display: grid; gap: 16px; min-width: 0; }
-.flow-nodes-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
-.flow-nodes-heading h3 { margin: 0; font-size: 14px; }
-.flow-nodes-editor > .secrets-hint { margin: 0; }
-.flow-node-configuration { display: grid; gap: 14px; min-width: 0; margin: 0; padding: 16px; border: 1px solid var(--border-subtle); border-radius: 8px; }
-.flow-node-configuration legend { max-width: 100%; overflow-wrap: anywhere; padding: 0 6px; font-size: 13px; font-weight: 600; }
-.flow-node-fields { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-.flow-node-fields label { min-width: 0; }
-.flow-node-actions { display: flex; flex-wrap: wrap; gap: 8px; }
-.flow-node-actions > :last-child { margin-left: auto; }
-@media (max-width: 520px) { .flow-node-fields { grid-template-columns: 1fr; } }
+.flow-node-fields {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
 
-.flow-delete-section { border-top: 1px solid var(--border-subtle); }
-.flow-delete-section > p { margin-top: 0; }
+.flow-node-fields label {
+  min-width: 0;
+}
+
+@media (max-width: 520px) {
+  .flow-node-fields {
+    grid-template-columns: 1fr;
+  }
+}
+
+.flow-delete-section {
+  border-top: 1px solid var(--border-subtle);
+}
+
+.flow-delete-section > p {
+  margin-top: 0;
+}
+
+.flow-settings-form input {
+  margin-top: 0;
+}
+
+.global-vault-picker {
+  display: grid;
+  gap: 12px;
+  padding-bottom: 0;
+}
+
+.ui-dialog.create-flow-dialog {
+  width: min(520px, calc(100vw - 32px));
+}
+
+.create-flow-vaults {
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.create-flow-vaults legend {
+  margin-bottom: 12px;
+  padding: 0;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+@media (max-width: 520px) {
+  .secret-list li {
+    align-items: flex-start;
+    flex-wrap: wrap;
+  }
+}
+
+
+
+.inherited-secret .secret-row-actions {
+  display: flex;
+}
+
+@media (max-width: 520px) {
+  .inherited-secret {
+    flex-wrap: wrap;
+  }
+  .inherited-secret .secret-row-actions {
+    width: 100%;
+  }
+}
+
+.node-dialog-fields {
+  display: grid;
+  gap: 20px;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+.node-triggers { display: grid; gap: 12px; }
+.node-trigger { display: grid; gap: 12px; margin: 0; padding: 12px; min-width: 0; border: 1px solid var(--border-subtle); border-radius: 6px; }
+.node-trigger legend { padding: 0 6px; color: var(--text-secondary); font-size: 12px; }
+.node-trigger-fields { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 160px), 1fr)); gap: 12px; }
+.node-trigger-remove { justify-self: end; }
+:is(.ui-dialog, .ui-settings) .node-properties { min-height: 180px; font: 12px/1.7 var(--font-mono); tab-size: 2; }
+
+.ui-dialog.tabbed-settings-dialog {
+
+  flex-direction: column;
+  width: min(720px, calc(100vw - 32px));
+  height: min(680px, calc(100svh - 48px));
+  overflow: hidden;
+}
+.tabbed-settings-dialog > .ui-dialog-header,
+.tabbed-settings-dialog > .settings-tabs {
+  flex-shrink: 0;
+}
+.tabbed-settings-dialog > .flow-settings-general,
+.tabbed-settings-dialog > .ui-dialog-content {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  align-content: start;
+}
+.tabbed-settings-dialog > [hidden] { display: none; }
+.tabbed-settings-dialog .node-dialog-form {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+}
+.node-dialog-form > .node-dialog-fields {
+  flex: 1;
+  min-height: 0;
+  padding: 20px 24px;
+  overflow-y: auto;
+  align-content: start;
+}
+.node-dialog-form > .ui-form-actions {
+  flex-shrink: 0;
+  padding: 16px 24px;
+  border-top: 1px solid var(--border-subtle);
+}
+.node-dialog-form > .ui-error { padding: 0 24px 12px; }
+.node-dialog-form .node-delete-button { margin-right: auto; }
+@media (max-width: 520px) {
+  .node-dialog-form > .node-dialog-fields { padding: 16px; }
+  .node-dialog-form > .ui-form-actions { padding: 12px 16px; }
+  .node-dialog-form > .ui-error { padding-left: 16px; padding-right: 16px; }
+}
+
+.node-dialog-fields .flow-node-fields input { margin-top: 6px; }
+.node-dialog-fields input, .node-dialog-fields select { margin-top: 6px; }
+
+.ui-dialog.tabbed-settings-dialog[open] { display: flex; }
+
+.flow-settings-general:not([hidden]) { display: flex; flex-direction: column; }
+.flow-general-form { display: flex; flex: 1; flex-direction: column; min-height: 0; }
+.flow-general-content { display: grid; gap: 24px; align-content: start; flex: 1; min-height: 0; overflow-y: auto; padding: 24px; }
+.flow-general-overview { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin: 0; }
+.flow-general-overview > div { padding: 16px; border: 1px solid var(--border-subtle); border-radius: 6px; }
+.flow-general-overview dt { color: var(--text-secondary); font-size: 12px; }
+.flow-general-overview dd { margin: 8px 0 0; font-size: 24px; font-weight: 500; }
+.flow-general-footer { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; flex-shrink: 0; padding: 16px 24px; border-top: 1px solid var(--border-subtle); }
+.flow-general-footer .ui-form-actions { padding: 0; margin-left: auto; }
+@media (max-width: 520px) {
+  .flow-general-content { padding: 16px; }
+  .flow-general-footer { padding: 12px 16px; }
+}
+
+.ui-dialog.vault-dialog { width: min(640px, calc(100vw - 32px)); }

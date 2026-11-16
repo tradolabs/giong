@@ -1,15 +1,15 @@
 import "./NodeLogPreview.css";
 import { useEffect, useRef, useState } from "react";
 import { UnauthorizedError } from "../../../api/exception";
-import { fetchNodeRunLogs } from "../../../api/requests";
-import type { NodeRun } from "../../../types/node-run";
+import { fetchNodeExecutionLogs } from "../../../api/requests";
+import type { NodeExecution } from "../../../types/node-execution";
 import { StatusBadge } from "./StatusBadge";
 
 export function NodeLogPreview({
-  run,
+  execution,
   onSignOut,
 }: {
-  run: NodeRun | null;
+  execution: NodeExecution | null;
   onSignOut: () => void;
 }) {
   const [lines, setLines] = useState<string[]>([]);
@@ -21,8 +21,8 @@ export function NodeLogPreview({
     setLines([]);
     lineCountRef.current = 0;
 
-    if (!run) return;
-    const runId = run.id;
+    if (!execution) return;
+    const executionId = execution.id;
     let cancelled = false;
     let polling = false;
 
@@ -30,7 +30,7 @@ export function NodeLogPreview({
       if (polling || cancelled) return;
       polling = true;
       try {
-        const chunk = await fetchNodeRunLogs(runId, lineCountRef.current);
+        const chunk = await fetchNodeExecutionLogs(executionId, lineCountRef.current);
         if (cancelled || !chunk) return;
 
         const newLines = chunk.split("\n");
@@ -40,24 +40,29 @@ export function NodeLogPreview({
 
         if (newLines.length > 0) {
           lineCountRef.current += newLines.length;
-          setLines((prev) => [...prev, ...newLines]);
+          setLines(prev => [...prev, ...newLines]);
         }
       } catch (err) {
         if (err instanceof UnauthorizedError) onSignOut();
-      } finally { polling = false; }
+      } finally {
+        polling = false;
+      }
     }
 
     pollLogs();
 
-    const isStreaming = run.status === "pending" || run.status === "running";
-    if (!isStreaming) return () => { cancelled = true; };
+    const isStreaming = execution.status === "pending" || execution.status === "executing";
+    if (!isStreaming)
+      return () => {
+        cancelled = true;
+      };
 
     const interval = window.setInterval(pollLogs, 1000);
     return () => {
       cancelled = true;
       window.clearInterval(interval);
     };
-  }, [run?.id, run?.status, onSignOut]);
+  }, [execution?.id, execution?.status, onSignOut]);
 
   useEffect(() => {
     if (autoScroll && containerRef.current) {
@@ -65,7 +70,7 @@ export function NodeLogPreview({
     }
   }, [lines, autoScroll]);
 
-  if (!run) {
+  if (!execution) {
     return (
       <section className="log-pane" aria-label="Logs">
         <div className="pane-header">
@@ -73,13 +78,13 @@ export function NodeLogPreview({
         </div>
         <div className="empty-state">
           <p className="empty-state-title">Select a log to view its contents</p>
-          <span>Output appears here while the node runs.</span>
+          <span>Output appears here while the node executions.</span>
         </div>
       </section>
     );
   }
 
-  const isStreaming = run.status === "pending" || run.status === "running";
+  const isStreaming = execution.status === "pending" || execution.status === "executing";
 
   return (
     <section className="log-pane" aria-label="Logs">
@@ -87,13 +92,20 @@ export function NodeLogPreview({
         <div className="log-heading">
           <p className="log-label">Log output</p>
           <div className="log-meta">
-            <strong>{run.log_timestamp ? `${run.log_timestamp}.log` : "Log output"}</strong>
-            <StatusBadge status={run.status} />
-            {run.exit_code !== null && <span className="mono">exit {run.exit_code}</span>}
+            <strong>
+              {`${execution.id}.log`}
+            </strong>
+            <StatusBadge status={execution.status} />
+            {execution.exit_code !== null && (
+              <span className="mono">
+                exit
+                {execution.exit_code}
+              </span>
+            )}
           </div>
         </div>
 
-        <div className="topbar-actions">
+        <div className="log-actions">
           {isStreaming && (
             <span className="log-stream-indicator">
               <span className="status-dot" />
@@ -104,7 +116,7 @@ export function NodeLogPreview({
             type="button"
             className="btn-ghost"
             aria-pressed={autoScroll}
-            onClick={() => setAutoScroll((v) => !v)}
+            onClick={() => setAutoScroll(v => !v)}
           >
             {autoScroll ? "Auto-scroll: On" : "Auto-scroll: Off"}
           </button>
@@ -112,18 +124,22 @@ export function NodeLogPreview({
       </div>
 
       <div ref={containerRef} className="log-content">
-        {lines.length === 0 ? (
-          <span className="log-placeholder">
-            {isStreaming ? "Waiting for log output..." : "No log output available."}
-          </span>
-        ) : (
-          lines.map((line, index) => (
-            <div key={index} className="log-line">
-              <span className="log-line-num">{index + 1}</span>
-              <span>{line}</span>
-            </div>
-          ))
-        )}
+        {lines.length === 0
+          ? (
+              <span className="log-placeholder">
+                {isStreaming
+                  ? "Waiting for log output..."
+                  : "No log output available."}
+              </span>
+            )
+          : (
+              lines.map((line, index) => (
+                <div key={index} className="log-line">
+                  <span className="log-line-num">{index + 1}</span>
+                  <span>{line}</span>
+                </div>
+              ))
+            )}
       </div>
     </section>
   );
