@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
-/// Reserved node storage key for the output published by configure.
+/// Reserved node storage key for the output published by execute.
 pub const OUTPUT_KEY: &str = "__giong/output";
 
 #[derive(Clone, Serialize, Deserialize)]

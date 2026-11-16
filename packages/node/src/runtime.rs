@@ -153,9 +153,9 @@ impl Plugin {
         Ok(serde_json::from_str(&json)?)
     }
 
-    pub fn configure(&mut self, args: &str) -> anyhow::Result<()> {
+    pub fn execute(&mut self, args: &str) -> anyhow::Result<()> {
         self.node
-            .call_configure(&mut self.store, args)
+            .call_execute(&mut self.store, args)
             .map_err(|error| anyhow::anyhow!("{error:#}"))?
             .map_err(anyhow::Error::msg)
     }

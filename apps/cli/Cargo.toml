@@ -2,19 +2,14 @@
 name = "giong-cli"
 version = "0.1.0"
 edition = "2024"
-description = "Add repositories and flows to Giong"
+description = "Reset the Giong admin password"
 
 [[bin]]
 name = "giong"
 path = "src/main.rs"
 
 [dependencies]
-giong-node = { path = "../../packages/node", default-features = false }
-serde.workspace = true
-serde_yaml_ng = "0.10"
-uuid.workspace = true
 anyhow.workspace = true
-serde_json.workspace = true
 giong-core = { path = "../../packages/core" }
 tokio.workspace = true
 dotenvy = "0.15.7"

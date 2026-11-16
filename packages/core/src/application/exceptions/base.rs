@@ -1,13 +1,12 @@
 use super::authentication::AuthenticationException;
+use crate::application::exceptions::resource::ResourceException;
 
 #[derive(Debug, thiserror::Error)]
 pub enum Exception {
     #[error("{0}")]
     BadRequest(String),
-    #[error("{0}")]
-    NotFound(&'static str),
-    #[error("{0}")]
-    Conflict(&'static str),
+    #[error(transparent)]
+    Resource(#[from] ResourceException),
     #[error(transparent)]
     Authentication(#[from] AuthenticationException),
     #[error("{0}")]
@@ -26,6 +25,12 @@ impl From<anyhow::Error> for Exception {
     }
 }
 
+impl From<giong_di::Error> for Exception {
+    fn from(error: giong_di::Error) -> Self {
+        Self::Unexpected(error.to_string())
+    }
+}
+
 impl From<giong_database::error::Error> for Exception {
     fn from(error: giong_database::error::Error) -> Self {
         Self::Unexpected(error.to_string())
@@ -34,6 +39,24 @@ impl From<giong_database::error::Error> for Exception {
 
 impl From<serde_json::Error> for Exception {
     fn from(error: serde_json::Error) -> Self {
+        Self::Unexpected(error.to_string())
+    }
+}
+
+impl From<giong_kv::error::Error> for Exception {
+    fn from(error: giong_kv::error::Error) -> Self {
+        Self::Unexpected(error.to_string())
+    }
+}
+
+impl From<std::io::Error> for Exception {
+    fn from(error: std::io::Error) -> Self {
+        Self::Unexpected(error.to_string())
+    }
+}
+
+impl From<giong_scheduler::Error> for Exception {
+    fn from(error: giong_scheduler::Error) -> Self {
         Self::Unexpected(error.to_string())
     }
 }

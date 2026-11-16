@@ -1,4 +1,4 @@
-use self::controllers::{auth as auth_controller, flows, index, node_runs, vaults};
+use self::controllers::{auth as auth_controller, flows, index, nodes, vaults};
 use axum::{
     Router,
     extract::DefaultBodyLimit,
@@ -12,6 +12,8 @@ use tokio::net::TcpListener;
 mod controllers;
 mod dtos;
 mod exceptions;
+mod extractors;
+mod guards;
 mod middlewares;
 
 pub async fn serve(application: Arc<Application>) -> anyhow::Result<()> {
@@ -23,23 +25,31 @@ pub async fn serve(application: Arc<Application>) -> anyhow::Result<()> {
         .route("/auth/sign-in", post(auth_controller::sign_in))
         .merge(
             Router::new()
-                .route("/vaults", get(vaults::list).post(vaults::create))
-                .route("/vaults/{id}", axum::routing::put(vaults::update).delete(vaults::delete))
-                .route("/vaults/{id}/secrets", get(vaults::secrets))
+                .route("/vaults", get(vaults::get_vaults).post(vaults::create_vault))
                 .route(
-                    "/vaults/{id}/secrets/{key}",
-                    axum::routing::put(vaults::put_secret).delete(vaults::delete_secret),
+                    "/vaults/{vault_id}",
+                    axum::routing::put(vaults::update_vault).delete(vaults::delete_vault),
                 )
-                .route("/flows/run", post(flows::run))
+                .route(
+                    "/vaults/{vault_id}/secrets",
+                    get(vaults::get_secrets).post(vaults::create_secret),
+                )
+                .route(
+                    "/vaults/{vault_id}/secrets/{secret_id}",
+                    axum::routing::put(vaults::update_secret).delete(vaults::delete_secret),
+                )
                 .route("/flows", get(flows::get_flows).post(flows::create_flow))
                 .route(
                     "/flows/{flow_id}",
                     axum::routing::put(flows::update_flow).delete(flows::delete_flow),
                 )
-                .route("/flows/{flow_id}/vaults", axum::routing::put(flows::update_vaults))
-                .route("/flows/{flow_id}/nodes/{node_id}/run", post(flows::run_node))
-                .route("/flows/{flow_id}/runs", get(flows::runs))
-                .route("/runs/{run_id}/logs", get(node_runs::logs))
+                .route("/flows/{flow_id}/nodes/{node_id}/execute", post(flows::execute_node))
+                .route("/flows/{flow_id}/nodes", post(nodes::create_node))
+                .route(
+                    "/flows/{flow_id}/nodes/{node_id}",
+                    get(nodes::get_details).put(nodes::update_node).delete(nodes::delete_node),
+                )
+                .route("/logs/{log_id}", get(nodes::get_logs))
                 .route_layer(middleware::from_fn_with_state(
                     state.clone(),
                     middlewares::auth::require_auth,

@@ -86,6 +86,8 @@ where
             let expression = match operator {
                 Operator::Eq(FieldValue::Null) => column.is_null(),
                 Operator::Eq(value) => column.eq(Self::to_value(value)),
+                Operator::Ne(FieldValue::Null) => column.is_not_null(),
+                Operator::Ne(value) => column.ne(Self::to_value(value)),
                 Operator::In(values) => {
                     let values: Vec<sea_orm::Value> =
                         values.into_iter().map(Self::to_value).collect();

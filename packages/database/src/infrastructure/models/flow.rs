@@ -9,7 +9,7 @@ pub struct Model {
     pub id: Uuid,
     #[sea_orm(unique)]
     pub name: String,
-    pub vault_id: Option<Uuid>,
+    pub vault_id: Uuid,
     pub inherited_vault_ids: serde_json::Value,
     pub created_at: String,
     pub updated_at: String,

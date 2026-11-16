@@ -50,7 +50,7 @@ impl Guest for Kubectl {
         .map_err(|_| "Could not encode metadata".into())
     }
 
-    fn configure(args: String) -> Result<(), String> {
+    fn execute(args: String) -> Result<(), String> {
         let inputs: Inputs = serde_json::from_str(&args).map_err(|_| "Invalid kubectl inputs")?;
         let source = giong::node::nodes::output(&inputs.source)?;
         let source: RepositoryOutput =

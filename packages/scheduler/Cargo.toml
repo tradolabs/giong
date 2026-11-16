@@ -9,3 +9,4 @@ futures-util = "0.3"
 thiserror.workspace = true
 tokio = { workspace = true, features = ["sync"] }
 tokio-cron-scheduler = "0.15"
+uuid.workspace = true

@@ -1,35 +1,13 @@
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
-    #[error("Key-value storage: {0}")]
-    Backend(#[source] Box<dyn std::error::Error + Send + Sync>),
+    #[error("No entry exists for the given key")]
+    NotFound,
+    #[error("Unexpected: {0}")]
+    Unexpected(#[source] Box<redb::Error>),
 }
 
-impl From<redb::DatabaseError> for Error {
-    fn from(error: redb::DatabaseError) -> Self {
-        Self::Backend(Box::new(error))
-    }
-}
-
-impl From<redb::TransactionError> for Error {
-    fn from(error: redb::TransactionError) -> Self {
-        Self::Backend(Box::new(error))
-    }
-}
-
-impl From<redb::TableError> for Error {
-    fn from(error: redb::TableError) -> Self {
-        Self::Backend(Box::new(error))
-    }
-}
-
-impl From<redb::StorageError> for Error {
-    fn from(error: redb::StorageError) -> Self {
-        Self::Backend(Box::new(error))
-    }
-}
-
-impl From<redb::CommitError> for Error {
-    fn from(error: redb::CommitError) -> Self {
-        Self::Backend(Box::new(error))
+impl<E: Into<redb::Error>> From<E> for Error {
+    fn from(error: E) -> Self {
+        Self::Unexpected(Box::new(error.into()))
     }
 }

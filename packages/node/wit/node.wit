@@ -11,7 +11,7 @@ interface storage {
     get: func(key: string) -> result<option<list<u8>>, string>;
     put: func(key: string, value: list<u8>) -> result<_, string>;
     delete: func(key: string) -> result<bool, string>;
-    keys: func(prefix: string) -> result<list<string>, string>;
+    search: func(prefix: string) -> result<list<string>, string>;
 }
 
 interface secrets {
@@ -39,5 +39,5 @@ world node {
     import storage;
     import git;
     export metadata: func() -> result<string, string>;
-    export configure: func(args: string) -> result<_, string>;
+    export execute: func(args: string) -> result<_, string>;
 }

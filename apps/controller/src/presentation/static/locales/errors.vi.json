@@ -23,11 +23,24 @@
       "queue_unavailable": "Hàng đợi webhook hiện không khả dụng."
     },
     "flow": {
-      "not_found": "Không tìm thấy flow."
+      "not_found": "Không tìm thấy flow.",
+      "already_exists": "Flow với tên này đã tồn tại.",
+      "in_use": "Flow này đang được sử dụng."
     },
     "secret": {
       "not_found": "Không tìm thấy secret.",
-      "already_exists": "Secret với key này đã tồn tại."
+      "already_exists": "Secret với key này đã tồn tại.",
+      "in_use": "Secret này đang được sử dụng."
+    },
+    "node": {
+      "not_found": "Không tìm thấy node trong flow này.",
+      "already_exists": "Node với tên này đã tồn tại.",
+      "in_use": "Node này đang được sử dụng."
+    },
+    "vault": {
+      "not_found": "Không tìm thấy vault.",
+      "already_exists": "Vault với tên này đã tồn tại.",
+      "in_use": "Vault này đang được một flow sử dụng."
     }
   }
 }

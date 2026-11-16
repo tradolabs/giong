@@ -1,5 +1,8 @@
+use crate::presentation::dtos::requests::create_flow::CreateFlowRequestDto;
+use crate::presentation::dtos::requests::update_flow::UpdateFlowRequestDto;
 use crate::presentation::dtos::responses::flow::FlowResponseDto;
 use crate::presentation::exceptions::http_exception::HttpException;
+use crate::presentation::extractors::validated_json::ValidatedJson;
 use axum::{
     Json,
     extract::{Path, State},
@@ -7,7 +10,8 @@ use axum::{
     response::IntoResponse,
 };
 use giong_core::application::application::Application;
-use giong_core::application::use_cases::upsert_flow::{UpsertFlowInput, UpsertFlowUseCase};
+use giong_core::application::use_cases::create_flow::CreateFlowInput;
+use giong_core::application::use_cases::update_flow::UpdateFlowInput;
 use std::sync::Arc;
 use uuid::Uuid;
 
@@ -20,13 +24,11 @@ pub(in crate::presentation) async fn get_flows(
 
 pub(in crate::presentation) async fn create_flow(
     State(application): State<Arc<Application>>,
-    Json(input): Json<crate::presentation::dtos::requests::create_flow::CreateFlowRequestDto>,
+    ValidatedJson(input): ValidatedJson<CreateFlowRequestDto>,
 ) -> Result<impl IntoResponse, HttpException> {
     let flow = application
-        .execute::<UpsertFlowUseCase>(UpsertFlowInput {
-            id: None,
+        .create_flow(CreateFlowInput {
             name: input.name.trim().to_owned(),
-            nodes: input.nodes,
             inherited_vault_ids: input.inherited_vault_ids,
         })
         .await?;
@@ -36,85 +38,30 @@ pub(in crate::presentation) async fn create_flow(
 pub(in crate::presentation) async fn update_flow(
     State(application): State<Arc<Application>>,
     Path(flow_id): Path<Uuid>,
-    Json(input): Json<crate::presentation::dtos::requests::update_flow::UpdateFlowRequestDto>,
+    ValidatedJson(input): ValidatedJson<UpdateFlowRequestDto>,
 ) -> Result<impl IntoResponse, HttpException> {
     let flow = application
-        .execute::<UpsertFlowUseCase>(UpsertFlowInput {
-            id: Some(flow_id),
+        .update_flow(UpdateFlowInput {
+            id: flow_id,
             name: input.name,
-            nodes: input.nodes,
             inherited_vault_ids: input.inherited_vault_ids,
         })
         .await?;
     Ok(Json(FlowResponseDto::from(flow)))
 }
 
-#[derive(serde::Deserialize)]
-#[serde(deny_unknown_fields)]
-pub(in crate::presentation) struct RunFlowRequest {
-    flow: giong_node::types::node::Flow,
-}
-pub(in crate::presentation) async fn run(
+pub(in crate::presentation) async fn execute_node(
     State(app): State<Arc<Application>>,
-    Json(input): Json<RunFlowRequest>,
+    Path((flow_id, node_id)): Path<(Uuid, Uuid)>,
 ) -> Result<impl IntoResponse, HttpException> {
-    use giong_core::application::use_cases::run_flow::{RunFlowInput, RunFlowUseCase};
-    Ok(Json(
-        app.execute::<RunFlowUseCase>(RunFlowInput {
-            flow: input.flow,
-            run_id: None,
-            log_timestamp: None,
-            node_id: None,
-            scope: None,
-        })
-        .await?,
-    ))
-}
-
-pub(in crate::presentation) async fn run_node(
-    State(app): State<Arc<Application>>,
-    Path(input): Path<(Uuid, Uuid)>,
-) -> Result<impl IntoResponse, HttpException> {
-    use giong_core::application::use_cases::node_triggers::TriggerNodeUseCase;
-    let run = app.execute::<TriggerNodeUseCase>(input).await?;
-    Ok((StatusCode::ACCEPTED, Json(run)))
+    let execution = app.execute_node(flow_id, node_id).await?;
+    Ok((StatusCode::ACCEPTED, Json(execution)))
 }
 
 pub(in crate::presentation) async fn delete_flow(
     State(app): State<Arc<Application>>,
     Path(id): Path<Uuid>,
 ) -> Result<impl IntoResponse, HttpException> {
-    use giong_core::application::use_cases::delete_flow::DeleteFlowUseCase;
-    app.execute::<DeleteFlowUseCase>(id).await?;
+    app.delete_flow(id).await?;
     Ok(StatusCode::NO_CONTENT)
-}
-
-#[derive(serde::Deserialize)]
-#[serde(deny_unknown_fields)]
-pub(in crate::presentation) struct UpdateFlowVaultsRequest {
-    inherited_vault_ids: Vec<Uuid>,
-}
-pub(in crate::presentation) async fn update_vaults(
-    State(app): State<Arc<Application>>,
-    Path(flow_id): Path<Uuid>,
-    Json(input): Json<UpdateFlowVaultsRequest>,
-) -> Result<impl IntoResponse, HttpException> {
-    use giong_core::application::use_cases::update_flow_vaults::{
-        UpdateFlowVaultsInput, UpdateFlowVaultsUseCase,
-    };
-    let flow = app
-        .execute::<UpdateFlowVaultsUseCase>(UpdateFlowVaultsInput {
-            flow_id,
-            inherited_vault_ids: input.inherited_vault_ids,
-        })
-        .await?;
-    Ok(Json(FlowResponseDto::from(flow)))
-}
-
-pub(in crate::presentation) async fn runs(
-    State(app): State<Arc<Application>>,
-    Path(flow_id): Path<Uuid>,
-) -> Result<impl IntoResponse, HttpException> {
-    use giong_core::application::use_cases::get_node_runs::GetNodeRunsUseCase;
-    Ok(Json(app.execute::<GetNodeRunsUseCase>(flow_id).await?))
 }

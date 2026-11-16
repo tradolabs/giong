@@ -19,7 +19,7 @@ impl Guest for Repository {
         .map_err(|error| error.to_string())
     }
 
-    fn configure(args: String) -> Result<(), String> {
+    fn execute(args: String) -> Result<(), String> {
         let inputs: RepositoryProperties =
             serde_json::from_str(&args).map_err(|_| "Invalid checkout properties".to_string())?;
         let token = inputs

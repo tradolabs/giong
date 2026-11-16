@@ -2,7 +2,8 @@ use super::use_case::UseCase;
 use crate::application::exceptions::base::Exception;
 use crate::utils::crypto::random_password;
 use giong_database::Database;
-use giong_database::{Condition, Document};
+use giong_database::repositories::types::condition::Condition;
+use giong_database::repositories::types::document::Document;
 use giong_di::Injectable;
 use std::sync::Arc;
 

@@ -11,6 +11,7 @@ giong-node = { path = "../node" }
 giong-di = { path = "../di" }
 giong-database = { path = "../database" }
 giong-publisher = { path = "../publisher" }
+giong-scheduler = { path = "../scheduler" }
 tokio = { workspace = true, features = ["fs", "sync"] }
 anyhow.workspace = true
 async-trait.workspace = true

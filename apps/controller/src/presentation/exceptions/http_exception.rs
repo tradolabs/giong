@@ -5,6 +5,7 @@ use axum::{
 };
 use giong_core::application::exceptions::authentication::AuthenticationException;
 use giong_core::application::exceptions::base::Exception;
+use giong_core::application::exceptions::resource::{Resource, ResourceException};
 use serde::Serialize;
 use std::collections::HashMap;
 
@@ -18,6 +19,44 @@ pub(in crate::presentation) enum HttpException {
     InternalServerError(String),
 }
 
+impl HttpException {
+    pub(in crate::presentation) fn get_translation_code(&self) -> &'static str {
+        match self {
+            Self::Application(exception) => match exception {
+                Exception::BadRequest(_) => "http.bad_request",
+                Exception::Resource(exception) => match exception {
+                    ResourceException::NotFound(Resource::Flow) => "modules.flow.not_found",
+                    ResourceException::NotFound(Resource::Node) => "modules.node.not_found",
+                    ResourceException::NotFound(Resource::Vault) => "modules.vault.not_found",
+                    ResourceException::NotFound(Resource::Secret) => "modules.secret.not_found",
+                    ResourceException::AlreadyExists(Resource::Flow) => {
+                        "modules.flow.already_exists"
+                    }
+                    ResourceException::AlreadyExists(Resource::Node) => {
+                        "modules.node.already_exists"
+                    }
+                    ResourceException::AlreadyExists(Resource::Vault) => {
+                        "modules.vault.already_exists"
+                    }
+                    ResourceException::AlreadyExists(Resource::Secret) => {
+                        "modules.secret.already_exists"
+                    }
+                    ResourceException::InUse(Resource::Flow) => "modules.flow.in_use",
+                    ResourceException::InUse(Resource::Node) => "modules.node.in_use",
+                    ResourceException::InUse(Resource::Vault) => "modules.vault.in_use",
+                    ResourceException::InUse(Resource::Secret) => "modules.secret.in_use",
+                },
+                Exception::Authentication(AuthenticationException::InvalidCredentials) => {
+                    "modules.auth.invalid_credentials"
+                }
+                Exception::Unexpected(_) => "http.internal_error",
+            },
+            Self::Response { code, .. } => code,
+            Self::InternalServerError(_) => "http.internal_error",
+        }
+    }
+}
+
 impl IntoResponse for HttpException {
     fn into_response(self) -> Response {
         #[derive(Serialize)]
@@ -29,32 +68,31 @@ impl IntoResponse for HttpException {
             errors: Option<HashMap<String, Vec<String>>>,
         }
 
+        let code = self.get_translation_code();
         let mut message = None;
-        let (status, code, errors) = match self {
+        let status = match self {
             Self::Application(exception) => {
                 eprintln!("Application exception: {exception:?}");
                 match exception {
                     Exception::BadRequest(reason) => {
                         message = Some(reason);
-                        (StatusCode::BAD_REQUEST, "http.bad_request", None)
+                        StatusCode::BAD_REQUEST
                     }
-                    Exception::NotFound(code) => (StatusCode::NOT_FOUND, code, None),
-                    Exception::Conflict(code) => (StatusCode::CONFLICT, code, None),
-                    Exception::Authentication(AuthenticationException::InvalidCredentials) => {
-                        (StatusCode::UNAUTHORIZED, "modules.auth.invalid_credentials", None)
-                    }
-                    Exception::Unexpected(_) => {
-                        (StatusCode::INTERNAL_SERVER_ERROR, "http.internal_error", None)
-                    }
+                    Exception::Resource(ResourceException::NotFound(_)) => StatusCode::NOT_FOUND,
+                    Exception::Resource(
+                        ResourceException::AlreadyExists(_) | ResourceException::InUse(_),
+                    ) => StatusCode::CONFLICT,
+                    Exception::Authentication(_) => StatusCode::UNAUTHORIZED,
+                    Exception::Unexpected(_) => StatusCode::INTERNAL_SERVER_ERROR,
                 }
             }
-            Self::Response { status, code } => (status, code, None),
-            Self::InternalServerError(message) => {
-                eprintln!("Internal server error: {message}");
-                (StatusCode::INTERNAL_SERVER_ERROR, "http.internal_error", None)
+            Self::Response { status, .. } => status,
+            Self::InternalServerError(reason) => {
+                eprintln!("Internal server error: {reason}");
+                StatusCode::INTERNAL_SERVER_ERROR
             }
         };
-        (status, Json(ErrorBody { code, message, errors })).into_response()
+        (status, Json(ErrorBody { code, message, errors: None })).into_response()
     }
 }
 

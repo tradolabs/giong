@@ -13,6 +13,7 @@ impl MigrationTrait for Migration {
                     .table("vaults")
                     .col(ColumnDef::new("id").uuid().not_null().primary_key())
                     .col(ColumnDef::new("name").string().not_null().unique_key())
+                    .col(ColumnDef::new("scope").string().not_null().default("global"))
                     .col(
                         ColumnDef::new("created_at")
                             .string()
@@ -34,6 +35,7 @@ impl MigrationTrait for Migration {
                     .table("flows")
                     .col(ColumnDef::new("id").uuid().not_null().primary_key())
                     .col(ColumnDef::new("name").string().not_null().unique_key())
+                    .col(ColumnDef::new("scope").string().not_null().default("global"))
                     .col(ColumnDef::new("vault_id").uuid().not_null().unique_key())
                     .col(ColumnDef::new("inherited_vault_ids").json().not_null().default("[]"))
                     .col(

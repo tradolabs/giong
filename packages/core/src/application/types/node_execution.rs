@@ -2,28 +2,27 @@ use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
-pub enum RunStatus {
+pub enum ExecutionStatus {
     Pending,
-    Running,
+    #[serde(alias = "running")]
+    Executing,
     Succeeded,
     Failed,
     Interrupted,
 }
-impl RunStatus {
+impl ExecutionStatus {
     pub fn active(self) -> bool {
-        matches!(self, Self::Pending | Self::Running)
+        matches!(self, Self::Pending | Self::Executing)
     }
 }
 #[derive(Clone, Debug, Serialize, Deserialize)]
-pub struct NodeRun {
+pub struct NodeExecution {
     pub id: Uuid,
     pub flow_id: Uuid,
     pub node_id: Uuid,
-    pub status: RunStatus,
+    pub status: ExecutionStatus,
     pub started_at: Option<String>,
     pub finished_at: Option<String>,
     pub exit_code: Option<i32>,
     pub created_at: String,
-    #[serde(default)]
-    pub log_timestamp: Option<String>,
 }
