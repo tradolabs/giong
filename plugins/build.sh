@@ -24,5 +24,5 @@ install_plugin() {
     mv "$staged" "$target"
     printf 'Installed plugin: %s\n' "$target"
 }
-install_plugin sources/repository giong_repository_source
+install_plugin repository giong_repository_source
 install_plugin runners/kubectl giong_kubectl_runner

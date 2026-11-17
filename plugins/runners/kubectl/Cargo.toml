@@ -7,7 +7,7 @@ edition = "2024"
 crate-type = ["cdylib"]
 
 [dependencies]
-giong-repository-source = { path = "../../sources/repository", default-features = false }
+giong-repository-source = { path = "../../repository", default-features = false }
 giong-node = { path = "../../../packages/node", default-features = false }
 wit-bindgen = "0.63.0"
 serde.workspace = true

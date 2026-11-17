@@ -1,4 +1,4 @@
-wit_bindgen::generate!({ path: "../../../packages/node/wit", world: "node" });
+wit_bindgen::generate!({ path: "../../packages/node/wit", world: "node" });
 
 use self::giong::node::{events, git, secrets, storage};
 use crate::types::{RepositoryOutput, RepositoryProperties};
@@ -14,7 +14,7 @@ struct Repository;
 impl Guest for Repository {
     fn metadata() -> Result<String, String> {
         serde_json::to_string(&Metadata {
-            kind: "sources/repository".into(),
+            kind: "repository".into(),
             name: "Repository".into(),
             version: env!("CARGO_PKG_VERSION").into(),
             description: "Check out a Git revision into a host-provided workspace".into(),

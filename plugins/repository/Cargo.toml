@@ -12,6 +12,6 @@ component = ["dep:wit-bindgen"]
 
 [dependencies]
 serde.workspace = true
-giong-node = { path = "../../../packages/node", default-features = false }
+giong-node = { path = "../../packages/node", default-features = false }
 wit-bindgen = { version = "0.63.0", optional = true }
 serde_json.workspace = true
