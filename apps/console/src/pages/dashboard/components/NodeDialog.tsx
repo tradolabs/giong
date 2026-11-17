@@ -8,19 +8,22 @@ import type { NodeEditorTab } from "./configuration";
 import { SettingsTabs } from "./SettingsTabs";
 import { NodeTriggersEditor } from "./NodeTriggersEditor";
 import { DeleteNodeDialog } from "./DeleteNodeDialog";
+import { NodeTypePicker } from "./NodeTypePicker";
 import "./FlowSettingsDialog.css";
 
 interface Props {
   flow: Flow;
   node?: FlowNode;
+  nodeKinds: string[];
+  nodeKindsLoading: boolean;
+  nodeKindsError: string | null;
   onClose: () => void;
   onSaved: (node: FlowNode) => void;
   onDeleted: (nodeId: string) => void;
   onSignOut: () => void;
 }
 
-export function NodeDialog({ flow, node, onClose, onSaved, onDeleted, onSignOut }: Props) {
-  const typesId = useId();
+export function NodeDialog({ flow, node, nodeKinds, nodeKindsLoading, nodeKindsError, onClose, onSaved, onDeleted, onSignOut }: Props) {
   const tabsId = useId();
   const [tab, setTab] = useState<NodeEditorTab>("general");
   const saving = useRef(false);
@@ -89,14 +92,13 @@ export function NodeDialog({ flow, node, onClose, onSaved, onDeleted, onSignOut 
               Name
               <input autoFocus required value={draft.name} onChange={event => setDraft({ ...draft, name: event.target.value })} />
             </label>
-            <label>
-              Type
-              <input required list={typesId} value={draft.type} onChange={event => setDraft({ ...draft, type: event.target.value })} />
-              <datalist id={typesId}>
-                <option value="sources/repository" />
-                <option value="runners/kubectl" />
-              </datalist>
-            </label>
+            <NodeTypePicker
+              kinds={nodeKinds}
+              value={draft.type}
+              loading={nodeKindsLoading}
+              error={nodeKindsError}
+              onChange={type => setDraft({ ...draft, type })}
+            />
           </div>
           </section>
           <section hidden={tab !== "configuration"} role="tabpanel" id={`${tabsId}-configuration-panel`} aria-labelledby={`${tabsId}-configuration-tab`}>

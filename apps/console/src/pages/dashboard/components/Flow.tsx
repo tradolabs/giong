@@ -1,12 +1,10 @@
 import { useMemo, useState } from "react";
 import type { Flow as FlowDefinition, FlowNode } from "../../../types/flow";
-import type { NodeExecution } from "../../../types/node-execution";
 import { StatusBadge } from "./StatusBadge";
 import "./Flow.css";
 
 interface Props {
   flow: FlowDefinition;
-  executions: NodeExecution[];
   selected: string | null;
   submitting: string | null;
   error: string | null;
@@ -19,7 +17,6 @@ interface Props {
 
 export function Flow({
   flow,
-  executions,
   selected,
   submitting,
   error,
@@ -161,20 +158,13 @@ export function Flow({
                                   d={`M${x},${y} C${x + 45},${y} ${endX - 45},${endY} ${endX},${endY}`}
                                   markerEnd="url(#canvas-arrow)"
                                 />
-                                <text
-                                  x={(x + endX) / 2}
-                                  y={(y + endY) / 2 - 10}
-                                  textAnchor="middle"
-                                >
-                                  {trigger.event}
-                                </text>
                               </g>
                             );
                           }),
                         )}
                       </svg>
                       {layout.placed.map(({ node, x, y }) => {
-                        const latest = executions.find(execution => execution.node_id === node.id);
+                        const latest = node.last_execution;
                         return (
                           <article
                             key={node.id}
@@ -204,9 +194,9 @@ export function Flow({
                                 : "Never"}
                             </small>
                             <footer>
-                              {latest
+                              {node.status
                                 ? (
-                                    <StatusBadge status={latest.status} />
+                                    <StatusBadge status={node.status} />
                                   )
                                 : (
                                     <span className="canvas-idle">Not executed</span>

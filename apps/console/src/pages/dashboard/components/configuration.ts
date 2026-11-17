@@ -1,4 +1,4 @@
-import type { FlowNode, NodeTrigger } from "../../../types/flow";
+import type { FlowNode, NodeDefinition, NodeTrigger } from "../../../types/flow";
 import { parseDocument, stringify } from "yaml";
 
 export type NodeEditorTab = "general" | "configuration" | "trigger";
@@ -16,7 +16,6 @@ export interface TriggerDraft {
   interval: string;
   unit: "seconds" | "minutes" | "hours";
   source: string;
-  event: string;
 }
 
 export interface NodeDraft {
@@ -36,7 +35,6 @@ export function newTrigger(trigger?: NodeTrigger): TriggerDraft {
     interval: String(seconds / multiplier),
     unit,
     source: trigger?.type === "event" ? trigger.node : "",
-    event: trigger?.type === "event" ? trigger.event : "",
   };
 }
 
@@ -68,7 +66,7 @@ export function parseConfiguration(value: string): Record<string, unknown> {
   return parsed as Record<string, unknown>;
 }
 
-export function buildNodeDefinition(draft: NodeDraft, nodes: FlowNode[], nodeId?: string): Omit<FlowNode, "id"> {
+export function buildNodeDefinition(draft: NodeDraft, nodes: FlowNode[], nodeId?: string): NodeDefinition {
   const name = draft.name.trim();
   if (!name || Array.from(name).some(character => /\p{Cc}/u.test(character)))
     throw new NodeValidationError("general", "Node name is required and cannot contain control characters.");
@@ -91,9 +89,7 @@ export function buildNodeDefinition(draft: NodeDraft, nodes: FlowNode[], nodeId?
     const source = nodes.find(node => node.name === trigger.source && node.id !== nodeId);
     if (!source || source.name === name)
       throw new NodeValidationError("trigger", "Choose another node in this flow for the event trigger.");
-    const event = trigger.event.trim();
-    if (!event) throw new NodeValidationError("trigger", "Event name is required.");
-    return { type: "event", node: source.name, event };
+    return { type: "event", node: source.name };
   });
   try {
     return { name, type, properties: parseConfiguration(draft.configuration), triggers };

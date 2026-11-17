@@ -49,19 +49,13 @@ export function NodeTriggersEditor({ triggers, nodes, nodeId, disabled, onChange
                 </label>
               </>
             ) : (
-              <>
-                <label>
-                  Source node
-                  <select required value={trigger.source} onChange={event => update(trigger.id, { source: event.target.value })}>
-                    <option value="" disabled>Select node</option>
-                    {sources.map(node => <option key={node.id ?? node.name} value={node.name}>{node.name}</option>)}
-                  </select>
-                </label>
-                <label>
-                  Event
-                  <input required value={trigger.event} onChange={event => update(trigger.id, { event: event.target.value })} />
-                </label>
-              </>
+              <label>
+                Source node
+                <select required value={trigger.source} onChange={event => update(trigger.id, { source: event.target.value })}>
+                  <option value="" disabled>Select node</option>
+                  {sources.map(node => <option key={node.id ?? node.name} value={node.name}>{node.name}</option>)}
+                </select>
+              </label>
             )}
           </div>
           <button type="button" className="btn-ghost node-trigger-remove" aria-label={`Remove trigger ${index + 1}`} onClick={() => onChange(triggers.filter(item => item.id !== trigger.id))}>Remove</button>

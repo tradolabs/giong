@@ -256,8 +256,8 @@
 
 .flow-node-fields {
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 12px;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 24px;
 }
 
 .flow-node-fields label {
@@ -387,9 +387,6 @@
   .node-dialog-form > .ui-form-actions { padding: 12px 16px; }
   .node-dialog-form > .ui-error { padding-left: 16px; padding-right: 16px; }
 }
-
-.node-dialog-fields .flow-node-fields input { margin-top: 6px; }
-.node-dialog-fields input, .node-dialog-fields select { margin-top: 6px; }
 
 .ui-dialog.tabbed-settings-dialog[open] { display: flex; }
 

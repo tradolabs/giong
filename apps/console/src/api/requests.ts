@@ -2,7 +2,7 @@ import type { SignInOutput } from "../types/auth";
 import type { NodeExecution } from "../types/node-execution";
 import type { NodeDetails } from "../types/node-details";
 import type { Vault, Secret } from "../types/secret";
-import type { Flow, FlowNode } from "../types/flow";
+import type { Flow, FlowNode, NodeDefinition } from "../types/flow";
 import { UnauthorizedError } from "./exception";
 import { getStoredToken, setStoredToken } from "./local-storage";
 
@@ -89,6 +89,15 @@ export function fetchFlows(signal?: AbortSignal): Promise<Flow[]> {
   return request<Flow[]>("/flows", { signal });
 }
 
+let nodeKindsRequest: Promise<string[]> | undefined;
+
+export function fetchNodeKinds(): Promise<string[]> {
+  return nodeKindsRequest ??= request<string[]>("/nodes/kinds").catch((error) => {
+    nodeKindsRequest = undefined;
+    throw error;
+  });
+}
+
 export function executeNode(flowId: string, nodeId: string): Promise<NodeExecution> {
   return request<NodeExecution>(
     `/flows/${encodeURIComponent(flowId)}/nodes/${encodeURIComponent(nodeId)}/execute`,
@@ -126,13 +135,13 @@ export function createFlow(input: Pick<Flow, "name" | "inherited_vault_ids">): P
   });
 }
 
-export function createFlowNode(flowId: string, node: Omit<FlowNode, "id">): Promise<FlowNode> {
+export function createFlowNode(flowId: string, node: NodeDefinition): Promise<FlowNode> {
   return request<FlowNode>(`/flows/${encodeURIComponent(flowId)}/nodes`, {
     method: "POST", body: JSON.stringify(node),
   });
 }
 
-export function updateFlowNode(flowId: string, nodeId: string, node: Omit<FlowNode, "id">): Promise<FlowNode> {
+export function updateFlowNode(flowId: string, nodeId: string, node: NodeDefinition): Promise<FlowNode> {
   return request<FlowNode>(`/flows/${encodeURIComponent(flowId)}/nodes/${encodeURIComponent(nodeId)}`, {
     method: "PUT",
     body: JSON.stringify(node),

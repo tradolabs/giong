@@ -2,7 +2,6 @@ import { useEffect, useRef, useState } from "react";
 import { getApiErrorMessage } from "../../../api/errors";
 import { fetchFlows, executeNode as requestNodeExecution } from "../../../api/requests";
 import type { Flow } from "../../../types/flow";
-import type { NodeExecution } from "../../../types/node-execution";
 
 export function useDashboardData(onSignOut: () => void, selectedFlowId: string | null, enabled: boolean) {
   const flowRevision = useRef(0);
@@ -10,7 +9,6 @@ export function useDashboardData(onSignOut: () => void, selectedFlowId: string |
   currentFlowId.current = selectedFlowId;
   const [flows, setFlows] = useState<Flow[]>([]);
   const [loading, setLoading] = useState(true);
-  const [executions, setExecutions] = useState<NodeExecution[]>([]);
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -20,6 +18,7 @@ export function useDashboardData(onSignOut: () => void, selectedFlowId: string |
   useEffect(() => {
     if (!enabled) return;
     let active = true;
+    let timeout: number | undefined;
     const controller = new AbortController();
     setLoading(true);
     setError(null);
@@ -30,10 +29,14 @@ export function useDashboardData(onSignOut: () => void, selectedFlowId: string |
         const data = await fetchFlows(controller.signal);
         if (!active || revision !== flowRevision.current) return;
         setFlows(data);
+        setError(null);
       } catch (err) {
         if (active) setError(getApiErrorMessage(err, onSignOut, "Could not load flows"));
       } finally {
-        if (active) setLoading(false);
+        if (active) {
+          setLoading(false);
+          if (selectedFlowId) timeout = window.setTimeout(() => { void load(); }, 10_000);
+        }
       }
     }
 
@@ -41,8 +44,9 @@ export function useDashboardData(onSignOut: () => void, selectedFlowId: string |
     return () => {
       active = false;
       controller.abort();
+      window.clearTimeout(timeout);
     };
-  }, [enabled, onSignOut]);
+  }, [enabled, selectedFlowId, onSignOut]);
 
   useEffect(() => {
     setSelectedNodeId(current =>
@@ -51,11 +55,6 @@ export function useDashboardData(onSignOut: () => void, selectedFlowId: string |
         : (selectedFlow?.nodes[0]?.id ?? null),
     );
   }, [selectedFlowId, selectedFlow?.nodes]);
-
-  useEffect(() => {
-    setExecutions([]);
-    setError(null);
-  }, [selectedFlowId]);
 
   async function executeNode(nodeId: string) {
     if (!selectedFlowId || submitting) return;
@@ -66,10 +65,14 @@ export function useDashboardData(onSignOut: () => void, selectedFlowId: string |
       const flowId = selectedFlowId;
       const execution = await requestNodeExecution(flowId, nodeId);
       if (currentFlowId.current !== flowId) return;
-      setExecutions(current => [
-        execution,
-        ...current.filter(item => item.id !== execution.id),
-      ]);
+      flowRevision.current += 1;
+      setFlows(current => current.map(flow => flow.id !== flowId ? flow : {
+        ...flow,
+        nodes: flow.nodes.map(node => {
+          if (node.id !== nodeId || (node.last_execution && node.last_execution.id >= execution.id)) return node;
+          return { ...node, status: execution.status, last_execution: execution };
+        }),
+      }));
     } catch (err) {
       const message = getApiErrorMessage(
         err,
@@ -98,7 +101,6 @@ export function useDashboardData(onSignOut: () => void, selectedFlowId: string |
     flowRevision.current += 1;
     setFlows(current => current.filter(flow => flow.id !== id));
     if (selectedFlowId === id) {
-      setExecutions([]);
       setSelectedNodeId(null);
     }
   }
@@ -113,7 +115,6 @@ export function useDashboardData(onSignOut: () => void, selectedFlowId: string |
         triggers: node.triggers.filter(trigger => trigger.type !== "event" || trigger.node !== removed?.name),
       })) };
     }));
-    setExecutions(current => current.filter(execution => execution.node_id !== nodeId));
   }
 
   return {
@@ -121,7 +122,6 @@ export function useDashboardData(onSignOut: () => void, selectedFlowId: string |
     selectedFlow,
     selectedFlowId,
     loading,
-    executions,
     selectedNodeId,
     setSelectedNodeId,
     submitting,

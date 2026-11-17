@@ -5,7 +5,6 @@ import type { NodeDetails } from "../../../types/node-details";
 import { SettingsTabs } from "./SettingsTabs";
 import { Dialog } from "../../../components/ui/Dialog";
 import type { FlowNode } from "../../../types/flow";
-import type { NodeExecution } from "../../../types/node-execution";
 import { NodeLogPreview } from "./NodeLogPreview";
 import { StatusBadge } from "./StatusBadge";
 import "./NodeDetailsDialog.css";
@@ -13,7 +12,6 @@ import "./NodeDetailsDialog.css";
 interface Props {
   flowId: string;
   node: FlowNode;
-  executions: NodeExecution[];
   onClose: () => void;
   onSignOut: () => void;
 }
@@ -22,7 +20,7 @@ function formatValue(value: unknown): string {
   return typeof value === "string" ? value : JSON.stringify(value, null, 2);
 }
 
-export function NodeDetailsDialog({ flowId, node, executions, onClose, onSignOut }: Props) {
+export function NodeDetailsDialog({ flowId, node, onClose, onSignOut }: Props) {
   const id = useId();
   const [tab, setTab] = useState("general");
   const [details, setDetails] = useState<NodeDetails | null>(null);
@@ -31,16 +29,21 @@ export function NodeDetailsDialog({ flowId, node, executions, onClose, onSignOut
     if (!node.id) return;
     let active = true;
     const controller = new AbortController();
-    fetchNodeDetails(flowId, node.id, controller.signal)
-      .then(data => { if (active) setDetails(data); })
+    void fetchNodeDetails(flowId, node.id, controller.signal)
+      .then((data) => {
+        if (active) {
+          setDetails(data);
+          setError(null);
+        }
+      })
       .catch((err: unknown) => {
         if (active) setError(getApiErrorMessage(err, onSignOut, "Could not load node details"));
       });
     return () => { active = false; controller.abort(); };
-  }, [flowId, node.id, onSignOut]);
+  }, [flowId, node.id, node.last_execution?.id, node.last_execution?.status, onSignOut]);
   const merged = new Map((details?.executions ?? []).map(execution => [execution.id, execution]));
-  for (const execution of executions) {
-    if (!merged.has(execution.id)) merged.set(execution.id, execution);
+  if (node.last_execution && !merged.has(node.last_execution.id)) {
+    merged.set(node.last_execution.id, node.last_execution);
   }
   const logs = [...merged.values()]
     .filter(execution => execution.node_id === node.id)
@@ -62,7 +65,6 @@ export function NodeDetailsDialog({ flowId, node, executions, onClose, onSignOut
       <div className="node-details-layout">
         <SettingsTabs id={id} orientation="vertical" tabs={[{ id: "general", label: "General" }, { id: "logs", label: "Logs" }]} selected={tab} onSelect={setTab} />
         <section className="node-details-general" role="tabpanel" id={`${id}-general-panel`} aria-labelledby={`${id}-general-tab`} hidden={tab !== "general"}>
-          <h3>Storage</h3>
           {!details && !error && <p role="status">Loading node data…</p>}
           {error && <p role="alert" className="ui-error">{error}</p>}
           {details && !entries.length && <p className="ui-empty">No stored data yet.</p>}

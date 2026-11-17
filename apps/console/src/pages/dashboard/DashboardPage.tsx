@@ -1,5 +1,7 @@
 import "./DashboardPage.css";
 import { useEffect, useState } from "react";
+import { fetchNodeKinds } from "../../api/requests";
+import { getApiErrorMessage } from "../../api/errors";
 import type { Flow, FlowNode } from "../../types/flow";
 import { AddFlowDialog } from "./components/AddFlowDialog";
 import { Flow as FlowView } from "./components/Flow";
@@ -19,6 +21,9 @@ function selectedFlowFromUrl(hash: string): string | null {
 
 export function DashboardPage({ onSignOut }: { onSignOut: () => void }) {
   const [route, setRoute] = useState(() => window.location.hash);
+  const [nodeKinds, setNodeKinds] = useState<string[]>([]);
+  const [nodeKindsLoading, setNodeKindsLoading] = useState(true);
+  const [nodeKindsError, setNodeKindsError] = useState<string | null>(null);
   const [sidebarExpanded, setSidebarExpanded] = useState(() => {
     try {
       const saved = localStorage.getItem("giong_sidebar_expanded");
@@ -32,7 +37,6 @@ export function DashboardPage({ onSignOut }: { onSignOut: () => void }) {
     flows,
     selectedFlow,
     loading,
-    executions,
     selectedNodeId,
     setSelectedNodeId,
     submitting,
@@ -43,6 +47,18 @@ export function DashboardPage({ onSignOut }: { onSignOut: () => void }) {
     removeFlow,
     removeNode,
   } = useDashboardData(onSignOut, selectedFlowId, !isSetting);
+
+  useEffect(() => {
+    let active = true;
+    void fetchNodeKinds().then((kinds) => {
+      if (active) setNodeKinds(kinds);
+    }).catch((error) => {
+      if (active) setNodeKindsError(getApiErrorMessage(error, onSignOut, "Could not load node kinds"));
+    }).finally(() => {
+      if (active) setNodeKindsLoading(false);
+    });
+    return () => { active = false; };
+  }, [onSignOut]);
 
   const [nodeEditor, setNodeEditor] = useState<{ flowId: string; node?: FlowNode } | null>(null);
   const [addingFlow, setAddingFlow] = useState(false);
@@ -94,6 +110,7 @@ export function DashboardPage({ onSignOut }: { onSignOut: () => void }) {
       {sidebarExpanded && <button className="sidebar-backdrop" type="button" aria-label="Close navigation" onClick={() => setSidebarExpanded(false)} />}
       <div className="app-main">
         <main className={isSetting ? "settings-screen" : selectedFlowId ? "flow-details-screen" : "flows-screen"}>
+          {nodeKindsError && <p className="ui-error" role="alert">{nodeKindsError}</p>}
           {isSetting ? <GlobalSettings onSignOut={onSignOut} /> : !selectedFlowId ? (
             <FlowList flows={flows} loading={loading} error={error} onSettings={flow => openFlowSettings(flow)} onAddFlow={() => setAddingFlow(true)} />
           ) : (
@@ -105,7 +122,6 @@ export function DashboardPage({ onSignOut }: { onSignOut: () => void }) {
                 <FlowView
                   key={selectedFlowId}
                   flow={selectedFlow}
-                  executions={executions}
                   selected={selectedNodeId}
                   submitting={submitting}
                   error={error}
@@ -123,6 +139,9 @@ export function DashboardPage({ onSignOut }: { onSignOut: () => void }) {
           <NodeDialog
             flow={selectedFlow}
             node={nodeEditor.node}
+            nodeKinds={nodeKinds}
+            nodeKindsLoading={nodeKindsLoading}
+            nodeKindsError={nodeKindsError}
             onClose={() => setNodeEditor(null)}
             onSignOut={onSignOut}
             onDeleted={nodeId => {
@@ -142,7 +161,6 @@ export function DashboardPage({ onSignOut }: { onSignOut: () => void }) {
             key={logsNode.id}
             flowId={selectedFlow.id}
             node={logsNode}
-            executions={executions}
             onClose={() => setLogsNodeId(null)}
             onSignOut={onSignOut}
           />

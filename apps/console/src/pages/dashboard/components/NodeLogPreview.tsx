@@ -98,8 +98,7 @@ export function NodeLogPreview({
             <StatusBadge status={execution.status} />
             {execution.exit_code !== null && (
               <span className="mono">
-                exit
-                {execution.exit_code}
+                {`exit ${execution.exit_code}`}
               </span>
             )}
           </div>

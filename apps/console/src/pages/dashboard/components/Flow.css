@@ -3,6 +3,11 @@
   flex-direction: column;
   min-height: 300px;
 }
+.flow-canvas-pane > .empty-state {
+  flex: 1;
+  height: auto;
+  min-height: 0;
+}
 .flow-canvas-tools {
   display: flex;
   align-items: center;
@@ -33,10 +38,6 @@
 }
 .flow-canvas-edges marker path {
   fill: var(--accent);
-}
-.flow-canvas-edges text {
-  fill: var(--text-secondary);
-  font: 11px var(--font-mono);
 }
 .canvas-node {
   position: absolute;
