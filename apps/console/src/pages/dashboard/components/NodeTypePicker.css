@@ -32,16 +32,9 @@
   font-size: 12px;
 }
 
-.node-type-group h3 {
-  margin: 0 0 8px;
-  color: var(--text-secondary);
-  font-size: 12px;
-  font-weight: 500;
-}
-
 .node-type-options {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, 240px), 1fr));
+  grid-template-columns: minmax(0, 1fr);
   gap: 8px;
 }
 
@@ -89,11 +82,6 @@
   gap: 4px;
   min-width: 0;
   overflow-wrap: anywhere;
-}
-
-.node-type-name {
-  font-size: 13px;
-  font-weight: 600;
 }
 
 .node-type-copy code, .node-type-selected {

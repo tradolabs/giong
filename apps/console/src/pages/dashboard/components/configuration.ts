@@ -74,7 +74,7 @@ export function buildNodeDefinition(draft: NodeDraft, nodes: FlowNode[], nodeId?
     throw new NodeValidationError("general", `Node name "${name}" is already used.`);
   const type = draft.type.trim();
   if (!/^[a-zA-Z0-9_-]+(?:\/[a-zA-Z0-9_-]+)*$/.test(type))
-    throw new NodeValidationError("general", "Choose a valid node type.");
+    throw new NodeValidationError("general", "Choose a valid node kind.");
   const triggers: NodeTrigger[] = draft.triggers.map((trigger) => {
     if (trigger.type === "interval") {
       const interval = Number(trigger.interval);
