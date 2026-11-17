@@ -7,6 +7,7 @@ fn main() -> anyhow::Result<()> {
     let runtime = tokio::runtime::Builder::new_current_thread().enable_all().build()?;
     let result = runtime.block_on(async {
         let application = bootstrap::ensure_initialized(Config::default()).await?;
+        application.resume_pending_executions().await?;
         presentation::serve(application).await?;
         Ok(())
     });

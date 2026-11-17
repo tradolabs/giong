@@ -1,12 +1,15 @@
-use giong_core::application::services::secret_service::SecretInfo;
+use giong_database::entities::secret_entity::SecretEntity;
 use serde::Serialize;
+use uuid::Uuid;
+
 #[derive(Serialize)]
 pub(in crate::presentation) struct SecretResponseDto {
+    pub id: Uuid,
     pub key: String,
-    pub source: Option<String>,
 }
-impl From<SecretInfo> for SecretResponseDto {
-    fn from(info: SecretInfo) -> Self {
-        Self { key: info.key, source: info.source }
+
+impl From<SecretEntity> for SecretResponseDto {
+    fn from(entity: SecretEntity) -> Self {
+        Self { id: entity.id, key: entity.key }
     }
 }

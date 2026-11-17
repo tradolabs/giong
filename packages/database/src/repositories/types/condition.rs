@@ -3,6 +3,7 @@ use super::field_value::FieldValue;
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Operator {
     Eq(FieldValue),
+    Ne(FieldValue),
     In(Vec<FieldValue>),
 }
 
@@ -18,6 +19,11 @@ impl Condition {
 
     pub fn eq(mut self, field: impl Into<String>, value: impl Into<FieldValue>) -> Self {
         self.filters.push((field.into(), Operator::Eq(value.into())));
+        self
+    }
+
+    pub fn ne(mut self, field: impl Into<String>, value: impl Into<FieldValue>) -> Self {
+        self.filters.push((field.into(), Operator::Ne(value.into())));
         self
     }
 

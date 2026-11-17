@@ -1,0 +1,28 @@
+#!/bin/sh
+set -eu
+root=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
+destination="${GIONG_PLUGINS_DIR:-$HOME/.giong/plugins}"
+case "$destination" in
+    "~") destination="$HOME" ;;
+    "~/"*) destination="$HOME/${destination#'~/'}" ;;
+    /*) ;;
+    *) destination="$PWD/$destination" ;;
+esac
+cd "$root"
+# kubectl depends on repository with its component feature disabled, which can
+# overwrite repository's .wasm artifact. Build the source component last.
+for package in giong-kubectl-runner giong-repository-source; do
+    cargo build --locked --release --target wasm32-wasip2 -p "$package"
+done
+output="${CARGO_TARGET_DIR:-target}/wasm32-wasip2/release"
+install_plugin() {
+    target="$destination/$1.wasm"
+    mkdir -p "$(dirname -- "$target")"
+    staged=$(mktemp "$target.XXXXXX")
+    trap 'rm -f "$staged"' EXIT HUP INT TERM
+    cp "$output/$2.wasm" "$staged"
+    mv "$staged" "$target"
+    printf 'Installed plugin: %s\n' "$target"
+}
+install_plugin repository giong_repository_source
+install_plugin runners/kubectl giong_kubectl_runner

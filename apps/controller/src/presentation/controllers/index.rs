@@ -1,5 +1,5 @@
-use crate::presentation::exceptions::http_exception::HttpException;
-use crate::presentation::exceptions::http_exception::NotFoundException;
+use crate::presentation::exceptions::http::HttpException;
+use crate::presentation::exceptions::http::NotFoundException;
 use axum::{
     extract::Path,
     http::header,

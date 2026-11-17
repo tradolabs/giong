@@ -1,0 +1,15 @@
+.ui-dialog:is(.delete-flow-dialog, .delete-node-dialog) {
+  width: min(440px, calc(100vw - 32px));
+}
+:is(.delete-flow-dialog, .delete-node-dialog) .ui-dialog-content > p {
+  margin-top: 0;
+  overflow-wrap: anywhere;
+  line-height: 1.6;
+}
+.delete-flow-actions {
+  display: flex;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 24px;
+}

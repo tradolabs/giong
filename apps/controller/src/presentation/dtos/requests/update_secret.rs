@@ -1,6 +1,8 @@
 use serde::Deserialize;
+use validator::Validate;
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Validate)]
+#[serde(deny_unknown_fields)]
 pub(in crate::presentation) struct UpdateSecretRequestDto {
     pub value: String,
 }

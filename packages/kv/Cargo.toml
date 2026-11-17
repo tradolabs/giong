@@ -1,0 +1,9 @@
+[package]
+name = "giong-kv"
+version.workspace = true
+edition = "2024"
+description = "Embedded key-value storage for Giong"
+
+[dependencies]
+redb = "4"
+thiserror.workspace = true

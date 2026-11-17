@@ -2,37 +2,59 @@ use aes_gcm::{
     Aes256Gcm, Nonce,
     aead::{Aead, KeyInit, Payload},
 };
-use anyhow::{Context, Result, ensure};
+use anyhow::{Context, Result};
 use argon2::{
     Argon2,
     password_hash::{PasswordHasher, PasswordVerifier, phc::PasswordHash},
 };
-use base64::{Engine, engine::general_purpose::URL_SAFE_NO_PAD};
+use base64::{
+    Engine,
+    engine::general_purpose::{STANDARD, URL_SAFE_NO_PAD},
+};
+use uuid::Uuid;
 
-pub(crate) fn encrypt(key: &[u8], value: &[u8], associated_data: &[u8]) -> Result<Vec<u8>> {
-    let cipher =
-        Aes256Gcm::new_from_slice(key).context("Encryption key must contain exactly 32 bytes")?;
-
-    let mut nonce = [0u8; 12];
-    getrandom::fill(&mut nonce)?;
-
-    let mut output = nonce.to_vec();
-    output.extend_from_slice(
-        &cipher
-            .encrypt(&Nonce::from(nonce), Payload { msg: value, aad: associated_data })
-            .context("Encryption failed")?,
-    );
-    Ok(output)
+fn secret_cipher(encryption_key: Option<&str>) -> Result<Aes256Gcm> {
+    let key = STANDARD.decode(encryption_key.context("Encryption key is required")?.trim())?;
+    Aes256Gcm::new_from_slice(&key)
+        .map_err(|_| anyhow::anyhow!("Encryption key must contain 32 bytes"))
 }
 
-pub(crate) fn decrypt(key: &[u8], value: &[u8], associated_data: &[u8]) -> Result<Vec<u8>> {
-    const NONCE_LENGTH: usize = 12;
-    ensure!(value.len() >= NONCE_LENGTH + 16, "Invalid encrypted data");
-    let nonce: [u8; NONCE_LENGTH] = value[..NONCE_LENGTH].try_into()?;
-    Aes256Gcm::new_from_slice(key)
-        .context("Encryption key must contain exactly 32 bytes")?
-        .decrypt(&Nonce::from(nonce), Payload { msg: &value[NONCE_LENGTH..], aad: associated_data })
-        .context("Decryption failed")
+pub(crate) fn encrypt_secret(
+    encryption_key: Option<&str>,
+    vault_id: Uuid,
+    key: &str,
+    value: &str,
+) -> Result<String> {
+    let cipher = secret_cipher(encryption_key)?;
+    let mut nonce = [0; 12];
+    getrandom::fill(&mut nonce)?;
+    let context = format!("vault:{vault_id}:{key}");
+    let encrypted = cipher
+        .encrypt(&Nonce::from(nonce), Payload { msg: value.as_bytes(), aad: context.as_bytes() })
+        .map_err(|_| anyhow::anyhow!("Secret encryption failed"))?;
+    let mut bytes = Vec::with_capacity(12 + encrypted.len());
+    bytes.extend_from_slice(&nonce);
+    bytes.extend_from_slice(&encrypted);
+    Ok(STANDARD.encode(bytes))
+}
+
+pub(crate) fn decrypt_secret(
+    encryption_key: Option<&str>,
+    vault_id: Uuid,
+    key: &str,
+    encrypted: &str,
+) -> Result<String> {
+    let bytes = STANDARD.decode(encrypted)?;
+    if bytes.len() < 28 {
+        anyhow::bail!("Invalid encrypted secret");
+    }
+    let nonce: [u8; 12] = bytes[..12].try_into()?;
+    let cipher = secret_cipher(encryption_key)?;
+    let context = format!("vault:{vault_id}:{key}");
+    let plaintext = cipher
+        .decrypt(&Nonce::from(nonce), Payload { msg: &bytes[12..], aad: context.as_bytes() })
+        .map_err(|_| anyhow::anyhow!("Secret decryption failed"))?;
+    Ok(String::from_utf8(plaintext)?)
 }
 
 pub(crate) async fn random_password() -> Result<(String, String)> {

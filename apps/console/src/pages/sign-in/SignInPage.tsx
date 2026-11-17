@@ -26,19 +26,37 @@ export function SignInPage({ onSuccess }: { onSuccess: () => void }) {
     <div className="login-shell">
       <div className="login-intro">
         <div className="login-brand">
-          <span className="brand-mark" aria-hidden="true">G</span>
+          <span className="brand-mark" aria-hidden="true">
+            G
+          </span>
           <span>Giong</span>
         </div>
         <div className="login-intro-content">
           <p className="login-kicker">Your deployment workspace</p>
-          <h1>Every build, <span>in view.</span></h1>
-          <p className="login-description">Keep an eye on your stacks, follow jobs as they run, and find the logs that matter.</p>
+          <h1>
+            Every build,
+            {" "}
+            <span>in view.</span>
+          </h1>
+          <p className="login-description">
+            Keep an eye on your flows, execute individual nodes, and find the logs
+            that matter.
+          </p>
           <div className="login-pipeline" aria-hidden="true">
-            <div className="pipeline-step"><span>01</span>Commit</div>
+            <div className="pipeline-step">
+              <span>01</span>
+              Commit
+            </div>
             <div className="pipeline-connector" />
-            <div className="pipeline-step"><span>02</span>Build</div>
+            <div className="pipeline-step">
+              <span>02</span>
+              Build
+            </div>
             <div className="pipeline-connector" />
-            <div className="pipeline-step"><span>03</span>Deploy</div>
+            <div className="pipeline-step">
+              <span>03</span>
+              Deploy
+            </div>
           </div>
         </div>
         <p className="login-intro-footer">Giong Console · CI/CD</p>
@@ -48,7 +66,11 @@ export function SignInPage({ onSuccess }: { onSuccess: () => void }) {
         <h2 className="brand-title">Sign in to your console</h2>
         <p className="brand-subtitle">Enter your credentials to continue.</p>
 
-        {error && <div className="error-banner" role="alert">{error}</div>}
+        {error && (
+          <div className="error-banner" role="alert">
+            {error}
+          </div>
+        )}
 
         <div className="field">
           <label htmlFor="username">Username</label>
@@ -56,7 +78,7 @@ export function SignInPage({ onSuccess }: { onSuccess: () => void }) {
             id="username"
             type="text"
             value={username}
-            onChange={(e) => setUsername(e.target.value)}
+            onChange={e => setUsername(e.target.value)}
             autoComplete="username"
             required
           />
@@ -68,7 +90,7 @@ export function SignInPage({ onSuccess }: { onSuccess: () => void }) {
             id="password"
             type="password"
             value={password}
-            onChange={(e) => setPassword(e.target.value)}
+            onChange={e => setPassword(e.target.value)}
             autoComplete="current-password"
             placeholder="••••••••••••"
             required

@@ -1,15 +1,13 @@
 use clap::Parser;
-use giong_core::application::use_cases::create_repository::CreateRepositoryInput;
-use giong_core::application::use_cases::create_stack::CreateStackInput;
 use giong_core::config::Config;
 
+mod actions;
 mod command;
 
-use crate::command::AddResource;
-use command::Command;
+use crate::command::Command;
 
 #[derive(Parser)]
-#[command(name = "giong", version)]
+#[command(name = "giong", version, disable_help_subcommand = true)]
 struct Cli {
     #[command(subcommand)]
     command: Command,
@@ -19,30 +17,8 @@ struct Cli {
 async fn main() -> anyhow::Result<()> {
     dotenvy::dotenv().ok();
     let cli = Cli::parse();
-    let application = giong_core::bootstrap::ensure_initialized(Config::default()).await?;
+    let application = giong_core::bootstrap::ensure_cli_initialized(Config::default()).await?;
     match cli.command {
-        Command::ResetAdminPassword => {
-            let password = application.reset_admin_password().await?;
-            println!("Admin password: {password}");
-        }
-        Command::Add(resource) => match resource {
-            AddResource::Repository { name, url, token } => {
-                application
-                    .create_repository(CreateRepositoryInput { name: name.clone(), url, token })
-                    .await?;
-                println!("Added repository {name}");
-            }
-            AddResource::Stack { name, configurations } => {
-                application
-                    .create_stack(CreateStackInput {
-                        name: name.clone(),
-                        configurations: serde_json::from_str(&configurations)?,
-                    })
-                    .await?;
-                println!("Added stack {name}");
-            }
-        },
+        Command::ResetAdminPassword => actions::reset_admin_password::execute(&application).await,
     }
-
-    Ok(())
 }

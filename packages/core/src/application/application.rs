@@ -1,29 +1,35 @@
 use crate::application::exceptions::base::Exception;
-use crate::application::services::secret_service::{
-    SecretInfo, SecretScope, SecretService, SecretSetInfo,
-};
+use crate::application::services::node::NodeService;
+use crate::application::types::node_execution::NodeExecution;
 use crate::application::use_cases::{
-    create_job::CreateJobUseCase,
-    create_repository::{CreateRepositoryInput, CreateRepositoryUseCase},
+    create_flow::{CreateFlowInput, CreateFlowUseCase},
+    create_node::{CreateNodeInput, CreateNodeUseCase},
     create_secret::{CreateSecretInput, CreateSecretUseCase},
-    create_stack::{CreateStackInput, CreateStackUseCase},
+    create_vault::{CreateVaultInput, CreateVaultUseCase},
+    delete_flow::DeleteFlowUseCase,
+    delete_node::DeleteNodeUseCase,
     delete_secret::{DeleteSecretInput, DeleteSecretUseCase},
-    get_job_logs::{GetJobLogsInput, GetJobLogsUseCase},
-    get_jobs::{GetJobsInput, GetJobsUseCase},
-    get_repositories::GetRepositoriesUseCase,
-    get_secrets::{GetSecretsInput, GetSecretsUseCase},
-    get_stacks::GetStacksUseCase,
-    poll_repositories::PollRepositoriesUseCase,
+    delete_vault::DeleteVaultUseCase,
+    get_flows::GetFlowsUseCase,
+    get_node_details::{GetNodeDetailsUseCase, NodeDetails},
+    get_node_logs::{GetNodeLogsInput, GetNodeLogsUseCase},
+    get_secret::{GetSecretInput, GetSecretUseCase},
+    get_secrets::GetSecretsUseCase,
+    get_vaults::GetVaultsUseCase,
     reset_admin_password::ResetAdminPasswordUseCase,
-    run_job::{RunJobInput, RunJobUseCase},
+    resume_pending_executions::ResumePendingExecutionsUseCase,
     sign_in::{SignInInput, SignInOutput, SignInUseCase},
+    update_flow::{UpdateFlowInput, UpdateFlowUseCase},
+    update_node::{UpdateNodeInput, UpdateNodeUseCase},
     update_secret::{UpdateSecretInput, UpdateSecretUseCase},
-    update_stack::{UpdateStackInput, UpdateStackUseCase},
+    update_vault::{UpdateVaultInput, UpdateVaultUseCase},
     use_case::UseCase,
 };
 use crate::config::Config;
-use giong_database::entities::repository_entity::RepositoryEntity;
-use giong_database::entities::{job_entity::JobEntity, stack_entity::StackEntity};
+use giong_database::entities::flow_entity::FlowEntity;
+use giong_database::entities::node_entity::NodeEntity;
+use giong_database::entities::secret_entity::SecretEntity;
+use giong_database::entities::vault_entity::VaultEntity;
 use giong_di::Container;
 use std::sync::Arc;
 use uuid::Uuid;
@@ -35,7 +41,7 @@ pub struct Application {
 
 impl Application {
     pub fn new(container: Arc<Container>) -> Result<Self, Exception> {
-        let config = container.get::<Config>().map_err(Exception::unexpected)?;
+        let config = container.get::<Config>()?;
         Ok(Self { config, container })
     }
 
@@ -43,209 +49,147 @@ impl Application {
         &self.config
     }
 
-    pub async fn run_job(&self, input: RunJobInput) -> Result<(), Exception> {
-        self.container.get::<RunJobUseCase>().map_err(Exception::unexpected)?.execute(input).await
-    }
-
-    pub async fn poll_repositories(
-        &self,
-        repository_urls: Option<Vec<String>>,
-    ) -> Result<(), Exception> {
-        self.container
-            .get::<PollRepositoriesUseCase>()
-            .map_err(Exception::unexpected)?
-            .execute(repository_urls)
-            .await
-    }
-
     pub async fn reset_admin_password(&self) -> Result<String, Exception> {
-        self.container
-            .get::<ResetAdminPasswordUseCase>()
-            .map_err(Exception::unexpected)?
-            .execute(())
-            .await
+        self.container.get::<ResetAdminPasswordUseCase>()?.execute(()).await
     }
 
     pub async fn sign_in(&self, username: &str, password: &str) -> Result<SignInOutput, Exception> {
         self.container
-            .get::<SignInUseCase>()
-            .map_err(Exception::unexpected)?
+            .get::<SignInUseCase>()?
             .execute(SignInInput { username: username.to_owned(), password: password.to_owned() })
             .await
     }
 
-    pub async fn get_repositories(&self) -> Result<Vec<RepositoryEntity>, Exception> {
-        self.container
-            .get::<GetRepositoriesUseCase>()
-            .map_err(Exception::unexpected)?
-            .execute(())
-            .await
+    pub async fn get_flows(&self) -> Result<Vec<FlowEntity>, Exception> {
+        self.container.get::<GetFlowsUseCase>()?.execute(()).await
     }
 
-    pub async fn create_repository(
+    pub async fn create_flow(&self, input: CreateFlowInput) -> Result<FlowEntity, Exception> {
+        self.container.get::<CreateFlowUseCase>()?.execute(input).await
+    }
+
+    pub async fn get_node_kinds(&self) -> Result<Vec<String>, Exception> {
+        self.container.get::<NodeService>()?.get_kinds().await
+    }
+
+    pub fn get_latest_node_execution(
         &self,
-        input: CreateRepositoryInput,
-    ) -> Result<RepositoryEntity, Exception> {
-        self.container
-            .get::<CreateRepositoryUseCase>()
-            .map_err(Exception::unexpected)?
-            .execute(input)
-            .await
+        node_id: Uuid,
+    ) -> Result<Option<NodeExecution>, Exception> {
+        Ok(self
+            .container
+            .get::<NodeService>()?
+            .get_executions(node_id)?
+            .into_iter()
+            .max_by_key(|execution| execution.id))
     }
 
-    pub async fn create_stack(&self, input: CreateStackInput) -> Result<StackEntity, Exception> {
-        self.container
-            .get::<CreateStackUseCase>()
-            .map_err(Exception::unexpected)?
-            .execute(input)
-            .await
+    pub async fn create_node(&self, input: CreateNodeInput) -> Result<NodeEntity, Exception> {
+        self.container.get::<CreateNodeUseCase>()?.execute(input).await
     }
 
-    pub async fn get_job_logs(
+    pub async fn update_node(&self, input: UpdateNodeInput) -> Result<NodeEntity, Exception> {
+        self.container.get::<UpdateNodeUseCase>()?.execute(input).await
+    }
+
+    pub async fn execute_node(
         &self,
-        job_id: &Uuid,
-        from_lines: usize,
+        flow_id: Uuid,
+        node_id: Uuid,
+    ) -> Result<NodeExecution, Exception> {
+        self.container.get::<NodeService>()?.enqueue_execution(flow_id, node_id).await
+    }
+
+    pub async fn delete_flow(&self, flow_id: Uuid) -> Result<(), Exception> {
+        self.container.get::<DeleteFlowUseCase>()?.execute(flow_id).await
+    }
+
+    pub async fn delete_node(&self, flow_id: Uuid, node_id: Uuid) -> Result<(), Exception> {
+        self.container.get::<DeleteNodeUseCase>()?.execute((flow_id, node_id)).await
+    }
+
+    pub async fn update_flow(&self, input: UpdateFlowInput) -> Result<FlowEntity, Exception> {
+        self.container.get::<UpdateFlowUseCase>()?.execute(input).await
+    }
+
+    pub async fn get_node_details(
+        &self,
+        flow_id: Uuid,
+        node_id: Uuid,
+    ) -> Result<NodeDetails, Exception> {
+        self.container.get::<GetNodeDetailsUseCase>()?.execute((flow_id, node_id)).await
+    }
+
+    pub async fn get_node_logs(
+        &self,
+        input: GetNodeLogsInput,
     ) -> Result<Option<String>, Exception> {
+        self.container.get::<GetNodeLogsUseCase>()?.execute(input).await
+    }
+
+    pub async fn get_secret(
+        &self,
+        vault_id: Uuid,
+        secret_id: Uuid,
+    ) -> Result<SecretEntity, Exception> {
         self.container
-            .get::<GetJobLogsUseCase>()
-            .map_err(Exception::unexpected)?
-            .execute(GetJobLogsInput { job_id: *job_id, from_lines })
+            .get::<GetSecretUseCase>()?
+            .execute(GetSecretInput { vault_id, secret_id })
             .await
     }
 
-    pub async fn update_stack(&self, input: UpdateStackInput) -> Result<StackEntity, Exception> {
-        self.container
-            .get::<UpdateStackUseCase>()
-            .map_err(Exception::unexpected)?
-            .execute(input)
-            .await
+    pub async fn get_vaults(&self) -> Result<Vec<VaultEntity>, Exception> {
+        self.container.get::<GetVaultsUseCase>()?.execute(()).await
     }
 
-    pub async fn get_runners(&self) -> Result<Vec<giong_runner::types::Metadata>, Exception> {
-        tokio::task::spawn_blocking(giong_runner::plugins::get_plugins)
-            .await
-            .map_err(Exception::unexpected)?
-            .map_err(Exception::unexpected)
+    pub async fn create_vault(&self, input: CreateVaultInput) -> Result<VaultEntity, Exception> {
+        self.container.get::<CreateVaultUseCase>()?.execute(input).await
     }
 
-    pub async fn get_stacks(&self) -> Result<Vec<StackEntity>, Exception> {
-        self.container.get::<GetStacksUseCase>().map_err(Exception::unexpected)?.execute(()).await
+    pub async fn update_vault(&self, input: UpdateVaultInput) -> Result<VaultEntity, Exception> {
+        self.container.get::<UpdateVaultUseCase>()?.execute(input).await
     }
 
-    pub async fn get_secrets(&self, stack_id: Uuid) -> Result<Vec<SecretInfo>, Exception> {
-        self.container
-            .get::<GetSecretsUseCase>()
-            .map_err(Exception::unexpected)?
-            .execute(GetSecretsInput { stack_id })
-            .await
+    pub async fn delete_vault(&self, vault_id: Uuid) -> Result<(), Exception> {
+        self.container.get::<DeleteVaultUseCase>()?.execute(vault_id).await
+    }
+
+    pub async fn get_secrets(&self, vault_id: Uuid) -> Result<Vec<SecretEntity>, Exception> {
+        self.container.get::<GetSecretsUseCase>()?.execute(vault_id).await
     }
 
     pub async fn create_secret(
         &self,
-        stack_id: Uuid,
+        vault_id: Uuid,
         key: String,
         value: String,
     ) -> Result<(), Exception> {
         self.container
-            .get::<CreateSecretUseCase>()
-            .map_err(Exception::unexpected)?
-            .execute(CreateSecretInput { stack_id, key, value })
+            .get::<CreateSecretUseCase>()?
+            .execute(CreateSecretInput { vault_id, key, value })
             .await
     }
 
     pub async fn update_secret(
         &self,
-        stack_id: Uuid,
-        key: String,
+        vault_id: Uuid,
+        secret_id: Uuid,
         value: String,
     ) -> Result<(), Exception> {
         self.container
-            .get::<UpdateSecretUseCase>()
-            .map_err(Exception::unexpected)?
-            .execute(UpdateSecretInput { stack_id, key, value })
+            .get::<UpdateSecretUseCase>()?
+            .execute(UpdateSecretInput { vault_id, secret_id, value })
             .await
     }
 
-    pub async fn delete_secret(&self, stack_id: Uuid, key: String) -> Result<(), Exception> {
+    pub async fn delete_secret(&self, vault_id: Uuid, secret_id: Uuid) -> Result<(), Exception> {
         self.container
-            .get::<DeleteSecretUseCase>()
-            .map_err(Exception::unexpected)?
-            .execute(DeleteSecretInput { stack_id, key })
+            .get::<DeleteSecretUseCase>()?
+            .execute(DeleteSecretInput { vault_id, secret_id })
             .await
     }
 
-    pub async fn get_secret_sets(&self) -> Result<Vec<SecretSetInfo>, Exception> {
-        self.container.get::<SecretService>().map_err(Exception::unexpected)?.list_sets().await
-    }
-    pub async fn create_secret_set(&self, name: String) -> Result<SecretSetInfo, Exception> {
-        self.container.get::<SecretService>().map_err(Exception::unexpected)?.create_set(name).await
-    }
-    pub async fn delete_secret_set(&self, id: Uuid) -> Result<(), Exception> {
-        self.container.get::<SecretService>().map_err(Exception::unexpected)?.delete_set(id).await
-    }
-    pub async fn get_set_secrets(&self, id: Uuid) -> Result<Vec<SecretInfo>, Exception> {
-        self.container
-            .get::<SecretService>()
-            .map_err(Exception::unexpected)?
-            .list_secrets(SecretScope::Set(id))
-            .await
-    }
-    pub async fn create_set_secret(
-        &self,
-        id: Uuid,
-        key: String,
-        value: String,
-    ) -> Result<(), Exception> {
-        self.container
-            .get::<SecretService>()
-            .map_err(Exception::unexpected)?
-            .create_secret(SecretScope::Set(id), key, value)
-            .await
-    }
-    pub async fn update_set_secret(
-        &self,
-        id: Uuid,
-        key: String,
-        value: String,
-    ) -> Result<(), Exception> {
-        self.container
-            .get::<SecretService>()
-            .map_err(Exception::unexpected)?
-            .update_secret(SecretScope::Set(id), key, value)
-            .await
-    }
-    pub async fn delete_set_secret(&self, id: Uuid, key: String) -> Result<(), Exception> {
-        self.container
-            .get::<SecretService>()
-            .map_err(Exception::unexpected)?
-            .delete_secret(SecretScope::Set(id), key)
-            .await
-    }
-    pub async fn inherit_secret_sets(
-        &self,
-        stack_id: Uuid,
-        sets: Vec<Uuid>,
-    ) -> Result<(), Exception> {
-        self.container
-            .get::<SecretService>()
-            .map_err(Exception::unexpected)?
-            .update_inherited_sets(stack_id, sets)
-            .await
-    }
-
-    pub async fn get_jobs(&self, stack_id: Uuid) -> Result<Vec<JobEntity>, Exception> {
-        self.container
-            .get::<GetJobsUseCase>()
-            .map_err(Exception::unexpected)?
-            .execute(GetJobsInput { stack_id })
-            .await
-    }
-
-    pub async fn create_job(&self, stack_id: Uuid) -> Result<JobEntity, Exception> {
-        self.container
-            .get::<CreateJobUseCase>()
-            .map_err(Exception::unexpected)?
-            .execute(stack_id)
-            .await
+    pub async fn resume_pending_executions(&self) -> Result<(), Exception> {
+        self.container.get::<ResumePendingExecutionsUseCase>()?.execute(()).await
     }
 }
