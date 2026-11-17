@@ -1,4 +1,5 @@
 import { useEffect, useId, useState } from "react";
+import { stringify } from "yaml";
 import { fetchNodeDetails } from "../../../api/requests";
 import { getApiErrorMessage } from "../../../api/errors";
 import type { NodeDetails } from "../../../types/node-details";
@@ -65,12 +66,20 @@ export function NodeDetailsDialog({ flowId, node, onClose, onSignOut }: Props) {
       <div className="node-details-layout">
         <SettingsTabs id={id} orientation="vertical" tabs={[{ id: "general", label: "General" }, { id: "logs", label: "Logs" }]} selected={tab} onSelect={setTab} />
         <section className="node-details-general" role="tabpanel" id={`${id}-general-panel`} aria-labelledby={`${id}-general-tab`} hidden={tab !== "general"}>
-          {!details && !error && <p role="status">Loading node data…</p>}
-          {error && <p role="alert" className="ui-error">{error}</p>}
-          {details && !entries.length && <p className="ui-empty">No stored data yet.</p>}
-          {details && <dl className="node-storage-entries">{entries.map(([key, value]) => (
-            <div key={key}><dt><code>{key}</code></dt><dd><pre>{formatValue(value)}</pre></dd></div>
-          ))}</dl>}
+          <dl className="node-storage-entries">
+            <div><dt>Name</dt><dd>{node.name}</dd></div>
+            <div><dt>Kind</dt><dd><code>{node.type}</code></dd></div>
+            <div><dt>Configuration (YAML)</dt><dd><pre>{stringify(node.properties)}</pre></dd></div>
+          </dl>
+          <section className="node-details-output" aria-label="Stored output">
+            <h3>Stored output</h3>
+            {!details && !error && <p role="status">Loading node data…</p>}
+            {error && <p role="alert" className="ui-error">{error}</p>}
+            {details && !entries.length && <p className="ui-empty">No stored data yet.</p>}
+            {details && <dl className="node-storage-entries">{entries.map(([key, value]) => (
+              <div key={key}><dt><code>{key}</code></dt><dd><pre>{formatValue(value)}</pre></dd></div>
+            ))}</dl>}
+          </section>
         </section>
         <div className="node-details-logs" role="tabpanel" id={`${id}-logs-panel`} aria-labelledby={`${id}-logs-tab`} hidden={tab !== "logs"}>
           {error && <p role="alert" className="ui-error">{error}</p>}

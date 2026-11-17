@@ -63,12 +63,12 @@ fn save_output(repository_path: String) -> Result<(), String> {
 fn publish_change(commit_sha: &str, previous: Option<&[u8]>) -> Result<(), String> {
     if previous == Some(commit_sha.as_bytes()) {
         println!("No new commits detected.");
-        return Ok(());
+    } else {
+        println!("New commit detected.");
+        storage::put(COMMIT_SHA_KEY, commit_sha.as_bytes())?;
     }
-
-    println!("New commit detected; triggering dependent nodes...");
     events::emit("changed")?;
-    storage::put(COMMIT_SHA_KEY, commit_sha.as_bytes())
+    Ok(())
 }
 
 export!(Repository);

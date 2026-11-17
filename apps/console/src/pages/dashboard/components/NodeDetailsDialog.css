@@ -69,6 +69,7 @@
 .node-details-layout { display: grid; grid-template-columns: 140px minmax(0, 1fr); flex: 1; min-height: 0; }
 .node-details-general { padding: 24px; overflow: auto; min-width: 0; }
 .node-details-general h3 { margin-top: 0; font-size: 14px; }
+.node-details-output { margin-top: 24px; }
 .node-details-logs { min-height: 0; min-width: 0; display: flex; flex-direction: column; }
 .node-details-logs > .node-logs-grid { flex: 1; min-height: 0; }
 .node-details-layout > [hidden] { display: none; }
