@@ -1,3 +1,3 @@
-pub mod flow_service;
-pub mod node_service;
-pub mod secret_service;
+pub mod flow;
+pub mod node;
+pub mod secret;

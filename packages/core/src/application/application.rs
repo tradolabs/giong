@@ -1,5 +1,5 @@
 use crate::application::exceptions::base::Exception;
-use crate::application::services::node_service::NodeService;
+use crate::application::services::node::NodeService;
 use crate::application::types::node_execution::NodeExecution;
 use crate::application::use_cases::{
     create_flow::{CreateFlowInput, CreateFlowUseCase},
@@ -14,7 +14,7 @@ use crate::application::use_cases::{
     get_node_details::{GetNodeDetailsUseCase, NodeDetails},
     get_node_logs::{GetNodeLogsInput, GetNodeLogsUseCase},
     get_secret::{GetSecretInput, GetSecretUseCase},
-    get_secrets::{GetSecretsUseCase, SecretInfo},
+    get_secrets::GetSecretsUseCase,
     get_vaults::GetVaultsUseCase,
     reset_admin_password::ResetAdminPasswordUseCase,
     resume_pending_executions::ResumePendingExecutionsUseCase,
@@ -66,6 +66,22 @@ impl Application {
 
     pub async fn create_flow(&self, input: CreateFlowInput) -> Result<FlowEntity, Exception> {
         self.container.get::<CreateFlowUseCase>()?.execute(input).await
+    }
+
+    pub async fn get_node_kinds(&self) -> Result<Vec<String>, Exception> {
+        self.container.get::<NodeService>()?.get_kinds().await
+    }
+
+    pub fn get_latest_node_execution(
+        &self,
+        node_id: Uuid,
+    ) -> Result<Option<NodeExecution>, Exception> {
+        Ok(self
+            .container
+            .get::<NodeService>()?
+            .get_executions(node_id)?
+            .into_iter()
+            .max_by_key(|execution| execution.id))
     }
 
     pub async fn create_node(&self, input: CreateNodeInput) -> Result<NodeEntity, Exception> {
@@ -138,7 +154,7 @@ impl Application {
         self.container.get::<DeleteVaultUseCase>()?.execute(vault_id).await
     }
 
-    pub async fn get_secrets(&self, vault_id: Uuid) -> Result<Vec<SecretInfo>, Exception> {
+    pub async fn get_secrets(&self, vault_id: Uuid) -> Result<Vec<SecretEntity>, Exception> {
         self.container.get::<GetSecretsUseCase>()?.execute(vault_id).await
     }
 

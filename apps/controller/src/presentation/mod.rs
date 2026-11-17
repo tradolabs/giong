@@ -1,4 +1,4 @@
-use self::controllers::{auth as auth_controller, flows, index, nodes, vaults};
+use self::controllers::{auth as auth_controller, flows, index, node, vault};
 use axum::{
     Router,
     extract::DefaultBodyLimit,
@@ -25,18 +25,19 @@ pub async fn serve(application: Arc<Application>) -> anyhow::Result<()> {
         .route("/auth/sign-in", post(auth_controller::sign_in))
         .merge(
             Router::new()
-                .route("/vaults", get(vaults::get_vaults).post(vaults::create_vault))
+                .route("/nodes/kinds", get(node::get_kinds))
+                .route("/vaults", get(vault::get_vaults).post(vault::create_vault))
                 .route(
                     "/vaults/{vault_id}",
-                    axum::routing::put(vaults::update_vault).delete(vaults::delete_vault),
+                    axum::routing::put(vault::update_vault).delete(vault::delete_vault),
                 )
                 .route(
                     "/vaults/{vault_id}/secrets",
-                    get(vaults::get_secrets).post(vaults::create_secret),
+                    get(vault::get_secrets).post(vault::create_secret),
                 )
                 .route(
                     "/vaults/{vault_id}/secrets/{secret_id}",
-                    axum::routing::put(vaults::update_secret).delete(vaults::delete_secret),
+                    axum::routing::put(vault::update_secret).delete(vault::delete_secret),
                 )
                 .route("/flows", get(flows::get_flows).post(flows::create_flow))
                 .route(
@@ -44,12 +45,12 @@ pub async fn serve(application: Arc<Application>) -> anyhow::Result<()> {
                     axum::routing::put(flows::update_flow).delete(flows::delete_flow),
                 )
                 .route("/flows/{flow_id}/nodes/{node_id}/execute", post(flows::execute_node))
-                .route("/flows/{flow_id}/nodes", post(nodes::create_node))
+                .route("/flows/{flow_id}/nodes", post(node::create_node))
                 .route(
                     "/flows/{flow_id}/nodes/{node_id}",
-                    get(nodes::get_details).put(nodes::update_node).delete(nodes::delete_node),
+                    get(node::get_details).put(node::update_node).delete(node::delete_node),
                 )
-                .route("/logs/{log_id}", get(nodes::get_logs))
+                .route("/logs/{log_id}", get(node::get_logs))
                 .route_layer(middleware::from_fn_with_state(
                     state.clone(),
                     middlewares::auth::require_auth,

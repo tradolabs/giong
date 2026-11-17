@@ -24,4 +24,3 @@ flow:
       triggers:
         - type: event
           node: repository
-          event: changed

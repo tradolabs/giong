@@ -1,8 +1,11 @@
 use crate::application::exceptions::base::Exception;
 use crate::application::exceptions::resource::{Resource, ResourceException};
 use crate::application::ports::queue::{events::ExecuteNodeEvent, queue_manager::QueueManager};
+use crate::application::services::flow::FlowService;
 use crate::application::types::node_execution::{ExecutionStatus, NodeExecution};
+use crate::config::Config;
 use giong_database::Database;
+use giong_database::entities::node_entity::NodeEntity;
 use giong_database::repositories::types::condition::Condition;
 use giong_di::Injectable;
 use giong_kv::kv::Kv;
@@ -11,18 +14,28 @@ use giong_scheduler::IntervalScheduler;
 use std::borrow::Cow;
 use std::cmp::Reverse;
 use std::collections::HashSet;
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 use uuid::Uuid;
+
+static EXECUTIONS: Mutex<()> = Mutex::new(());
 
 #[derive(Clone, Injectable)]
 pub struct NodeService {
     database: Arc<Database>,
+    flow_service: Arc<FlowService>,
     kv: Arc<Kv>,
     queue: Arc<dyn QueueManager>,
     scheduler: Arc<IntervalScheduler>,
 }
 
 impl NodeService {
+    pub(crate) async fn get_kinds(&self) -> Result<Vec<String>, Exception> {
+        tokio::task::spawn_blocking(giong_node::runtime::kinds)
+            .await
+            .map_err(Exception::unexpected)?
+            .map_err(Exception::from)
+    }
+
     pub(crate) async fn enqueue_execution(
         &self,
         flow_id: Uuid,
@@ -46,41 +59,102 @@ impl NodeService {
             exit_code: None,
             created_at: chrono::Utc::now().format("%Y-%m-%d %H:%M:%S").to_string(),
         };
-        self.kv
-            .namespace(&format!("nodes/{node_id}"))
-            .put(
-                format!("executions/{}", execution.id).as_bytes(),
-                &serde_json::to_vec(&execution)?,
-            )?;
+        self.insert_execution(execution.clone())?;
         self.queue.enqueue(ExecuteNodeEvent { node_id }.into()).await?;
         Ok(execution)
     }
 
     pub(crate) fn get_executions(&self, node_id: Uuid) -> Result<Vec<NodeExecution>, Exception> {
-        let mut executions = self
-            .kv
-            .namespace(&format!("nodes/{node_id}"))
-            .search(b"executions/")?
-            .into_iter()
-            .map(|(_, bytes)| serde_json::from_slice::<NodeExecution>(&bytes))
-            .collect::<Result<Vec<_>, _>>()?;
+        match self.kv.namespace(&format!("nodes/{node_id}")).get(b"executions") {
+            Ok(bytes) => Ok(serde_json::from_slice(&bytes)?),
+            Err(giong_kv::error::Error::NotFound) => Ok(Vec::new()),
+            Err(error) => Err(error.into()),
+        }
+    }
+
+    pub(crate) fn insert_execution(&self, execution: NodeExecution) -> Result<(), Exception> {
+        let _guard = EXECUTIONS.lock().map_err(Exception::unexpected)?;
+        let node_id = execution.node_id;
+        let mut executions = self.get_executions(node_id)?;
+        executions.push(execution);
         executions.sort_by_key(|execution| Reverse(execution.id));
-        Ok(executions)
+        let logs = Config::data_dir().join("logs/nodes").join(node_id.to_string());
+        for old in executions.drain(executions.len().min(10)..) {
+            match std::fs::remove_file(logs.join(format!("{}.log", old.id))) {
+                Ok(()) => {}
+                Err(error) if error.kind() == std::io::ErrorKind::NotFound => {}
+                Err(error) => return Err(error.into()),
+            }
+        }
+        self.kv
+            .namespace(&format!("nodes/{node_id}"))
+            .put(b"executions", &serde_json::to_vec(&executions)?)?;
+        Ok(())
+    }
+
+    pub(crate) fn update_execution(&self, execution: NodeExecution) -> Result<bool, Exception> {
+        let _guard = EXECUTIONS.lock().map_err(Exception::unexpected)?;
+        let node_id = execution.node_id;
+        let mut executions = self.get_executions(node_id)?;
+        let Some(current) = executions.iter_mut().find(|item| item.id == execution.id) else {
+            return Ok(false);
+        };
+        *current = execution;
+        self.kv
+            .namespace(&format!("nodes/{node_id}"))
+            .put(b"executions", &serde_json::to_vec(&executions)?)?;
+        Ok(true)
+    }
+
+    pub(crate) fn claim_pending_execution(
+        &self,
+        node_id: Uuid,
+    ) -> Result<Option<NodeExecution>, Exception> {
+        let _guard = EXECUTIONS.lock().map_err(Exception::unexpected)?;
+        let mut executions = self.get_executions(node_id)?;
+        let Some(execution) =
+            executions.iter_mut().rev().find(|item| item.status == ExecutionStatus::Pending)
+        else {
+            return Ok(None);
+        };
+        execution.status = ExecutionStatus::Executing;
+        execution.started_at = Some(chrono::Utc::now().format("%Y-%m-%d %H:%M:%S").to_string());
+        let execution = execution.clone();
+        self.kv
+            .namespace(&format!("nodes/{node_id}"))
+            .put(b"executions", &serde_json::to_vec(&executions)?)?;
+        Ok(Some(execution))
     }
 
     pub(crate) async fn find_execution(
         &self,
         execution_id: Uuid,
     ) -> Result<Option<NodeExecution>, Exception> {
-        let key = format!("executions/{execution_id}");
         for node in self.database.nodes.find(Condition::new()).await? {
-            match self.kv.namespace(&format!("nodes/{}", node.id)).get(key.as_bytes()) {
-                Ok(bytes) => return Ok(Some(serde_json::from_slice(&bytes)?)),
-                Err(giong_kv::error::Error::NotFound) => continue,
-                Err(error) => return Err(error.into()),
+            if let Some(execution) =
+                self.get_executions(node.id)?.into_iter().find(|item| item.id == execution_id)
+            {
+                return Ok(Some(execution));
             }
         }
         Ok(None)
+    }
+
+    pub(crate) async fn sync_node(
+        &self,
+        flow_id: Uuid,
+        node_id: Uuid,
+        triggers: &[Trigger],
+    ) -> Result<NodeEntity, Exception> {
+        let node = self
+            .database
+            .nodes
+            .find_one(Condition::new().eq("id", node_id).eq("flow_id", flow_id))
+            .await?
+            .ok_or(ResourceException::NotFound(Resource::Node))?;
+        self.sync_interval_trigger(flow_id, node.id, triggers).await?;
+        self.flow_service.invalidate_graph(flow_id).await;
+        Ok(node)
     }
 
     pub(crate) async fn sync_interval_trigger(
@@ -175,12 +249,9 @@ impl NodeService {
                             "Trigger interval must be a positive number of seconds".into(),
                         ));
                     }
-                    Trigger::Event { node: source, event }
-                        if event.trim().is_empty() || !names.contains(source.as_str()) =>
-                    {
+                    Trigger::Event { node: source, .. } if !names.contains(source.as_str()) => {
                         return Err(Exception::BadRequest(
-                            "Event triggers must name a node in this flow and a nonempty event"
-                                .into(),
+                            "Event triggers must name a node in this flow".into(),
                         ));
                     }
                     _ => {}

@@ -50,15 +50,14 @@ impl FlowService {
         &self,
         flow_id: Uuid,
         source_node_id: Uuid,
-        event: &str,
     ) -> Result<Vec<Uuid>, Exception> {
         if let Some(graph) = self.cache.graphs.read().await.get(&flow_id).cloned() {
-            return Ok(graph.targets(source_node_id, event));
+            return Ok(graph.targets(source_node_id));
         }
 
         let nodes = self.database.nodes.find(Condition::new().eq("flow_id", flow_id)).await?;
         let graph = Arc::new(FlowGraph::from_nodes(&nodes)?);
-        let targets = graph.targets(source_node_id, event);
+        let targets = graph.targets(source_node_id);
         self.cache.graphs.write().await.insert(flow_id, graph);
         Ok(targets)
     }

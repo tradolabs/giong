@@ -1,4 +1,4 @@
-use crate::presentation::exceptions::http_exception::HttpException;
+use crate::presentation::exceptions::http::HttpException;
 use axum::{
     extract::{FromRequestParts, Path},
     http::request::Parts,

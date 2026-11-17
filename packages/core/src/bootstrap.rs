@@ -1,9 +1,9 @@
 use crate::application::application::Application;
 use crate::application::helpers::flow_graph::FlowGraphCache;
 use crate::application::ports::queue::queue_manager::QueueManager;
-use crate::application::services::flow_service::FlowService;
-use crate::application::services::node_service::NodeService;
-use crate::application::services::secret_service::SecretService;
+use crate::application::services::flow::FlowService;
+use crate::application::services::node::NodeService;
+use crate::application::services::secret::SecretService;
 use crate::application::use_cases::create_node::CreateNodeUseCase;
 use crate::application::use_cases::create_secret::CreateSecretUseCase;
 use crate::application::use_cases::create_vault::CreateVaultUseCase;
@@ -41,12 +41,25 @@ fn ensure_data_dir() -> anyhow::Result<std::path::PathBuf> {
     Ok(data_dir)
 }
 
-pub async fn ensure_initialized(config: Config) -> anyhow::Result<Arc<Application>> {
-    let data_dir = ensure_data_dir()?;
+async fn initialize_database(config: &Config) -> anyhow::Result<Database> {
+    let data_dir = Config::data_dir();
+    fs::create_dir_all(&data_dir)?;
     let database_url = config.database_url.clone().unwrap_or_else(|| {
         format!("sqlite://{}?mode=rwc", data_dir.join("giong.sqlite3").display())
     });
-    let database = Database::new(&database_url).await?;
+    Ok(Database::new(&database_url).await?)
+}
+
+pub async fn ensure_cli_initialized(config: Config) -> anyhow::Result<Arc<Application>> {
+    let database = initialize_database(&config).await?;
+    let mut container = Container::new();
+    container.register(config).register(database).register_type::<ResetAdminPasswordUseCase>();
+    Ok(Arc::new(Application::new(Arc::new(container))?))
+}
+
+pub async fn ensure_initialized(config: Config) -> anyhow::Result<Arc<Application>> {
+    let data_dir = ensure_data_dir()?;
+    let database = initialize_database(&config).await?;
     let kv = Kv::new(data_dir.join("nodes.redb"))?;
     let publisher = Arc::new(Publisher::new().await?);
     let scheduler = IntervalScheduler::new().await?;

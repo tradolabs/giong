@@ -2,8 +2,9 @@ use crate::presentation::dtos::requests::create_secret::CreateSecretRequestDto;
 use crate::presentation::dtos::requests::create_vault::CreateVaultRequestDto;
 use crate::presentation::dtos::requests::update_secret::UpdateSecretRequestDto;
 use crate::presentation::dtos::requests::update_vault::UpdateVaultRequestDto;
+use crate::presentation::dtos::responses::secret::SecretResponseDto;
 use crate::presentation::dtos::responses::vault::VaultResponseDto;
-use crate::presentation::exceptions::http_exception::HttpException;
+use crate::presentation::exceptions::http::HttpException;
 use crate::presentation::extractors::r#use::Use;
 use crate::presentation::extractors::validated_json::ValidatedJson;
 use crate::presentation::guards::access_secret::AccessSecretGuard;
@@ -50,7 +51,8 @@ pub(in crate::presentation) async fn get_secrets(
     State(app): State<Arc<Application>>,
     Path(vault_id): Path<Uuid>,
 ) -> Result<impl IntoResponse, HttpException> {
-    Ok(Json(app.get_secrets(vault_id).await?))
+    let secrets = app.get_secrets(vault_id).await?;
+    Ok(Json(secrets.into_iter().map(SecretResponseDto::from).collect::<Vec<_>>()))
 }
 pub(in crate::presentation) async fn create_secret(
     State(app): State<Arc<Application>>,

@@ -1,8 +1,8 @@
 use crate::application::exceptions::base::Exception;
 use crate::application::exceptions::resource::{Resource, ResourceException};
-use crate::application::services::flow_service::FlowService;
-use crate::application::services::node_service::NodeService;
-use crate::application::services::secret_service::SecretService;
+use crate::application::services::flow::FlowService;
+use crate::application::services::node::NodeService;
+use crate::application::services::secret::SecretService;
 use crate::application::types::node_execution::{ExecutionStatus, NodeExecution};
 use crate::application::use_cases::use_case::UseCase;
 use crate::config::Config;
@@ -39,58 +39,11 @@ pub struct ExecuteNodeUseCase {
 }
 
 impl ExecuteNodeUseCase {
-    fn claim_pending_execution(&self, node_id: Uuid) -> Result<Option<NodeExecution>, Exception> {
-        static CLAIM: Mutex<()> = Mutex::new(());
-        let _guard = CLAIM.lock().map_err(Exception::unexpected)?;
-
-        let mut executions = self.node_service.get_executions(node_id)?;
-        let Some(mut execution) = executions
-            .iter()
-            .rev()
-            .find(|execution| execution.status == ExecutionStatus::Pending)
-            .cloned()
-        else {
-            return Ok(None);
-        };
-
-        execution.status = ExecutionStatus::Executing;
-        execution.started_at = Some(chrono::Utc::now().format("%Y-%m-%d %H:%M:%S").to_string());
-
-        let namespace = self.kv.namespace(&format!("nodes/{node_id}"));
-        namespace.put(
-            format!("executions/{}", execution.id).as_bytes(),
-            &serde_json::to_vec(&execution)?,
-        )?;
-
-        executions.retain(|old| old.id != execution.id);
-        for old in executions.into_iter().skip(9) {
-            if !old.status.active() {
-                namespace.delete(format!("executions/{}", old.id).as_bytes())?;
-            }
-        }
-
-        Ok(Some(execution))
-    }
-
     fn prepare_log_file(log_path: &Path) -> Result<(), Exception> {
         let directory = log_path.parent().expect("Node log has a parent directory");
         std::fs::create_dir_all(directory)?;
         std::fs::OpenOptions::new().create(true).append(true).open(log_path)?;
 
-        let mut previous = Vec::new();
-        for entry in std::fs::read_dir(directory)? {
-            let entry = entry?;
-            if entry.file_type()?.is_file()
-                && entry.path() != log_path
-                && entry.path().extension().is_some_and(|ext| ext == "log")
-            {
-                previous.push(entry.path());
-            }
-        }
-        previous.sort_by(|a, b| b.file_name().cmp(&a.file_name()));
-        for old in previous.into_iter().skip(9) {
-            std::fs::remove_file(old)?;
-        }
         Ok(())
     }
 
@@ -120,11 +73,9 @@ impl ExecuteNodeUseCase {
         let runtime = tokio::runtime::Handle::current();
 
         Events {
-            emit: Arc::new(move |event| {
+            emit: Arc::new(move |_event| {
                 runtime.block_on(async {
-                    let targets = flow_service
-                        .get_event_targets(flow_id, source_node_id, event)
-                        .await?;
+                    let targets = flow_service.get_event_targets(flow_id, source_node_id).await?;
                     for target_id in targets {
                         node_service.enqueue_execution(flow_id, target_id).await?;
                     }
@@ -197,11 +148,7 @@ impl ExecuteNodeUseCase {
                     workspace: Some(workspace.join(format!("node-{}", node.id))),
                     storage: Some(storage.clone()),
                     outputs: Some(outputs),
-                    execution: Some(Execution {
-                        id: execution_id.to_string(),
-                        workspace,
-                        logger,
-                    }),
+                    execution: Some(Execution { id: execution_id.to_string(), workspace, logger }),
                 },
             )?;
             storage.delete(OUTPUT_KEY)?;
@@ -225,22 +172,16 @@ impl ExecuteNodeUseCase {
             let _ = writeln!(file, "{error}");
         }
 
-        let namespace = self.kv.namespace(&format!("nodes/{}", execution.node_id));
-        let key = format!("executions/{}", execution.id);
-        match namespace.get(key.as_bytes()) {
-            Ok(_) => {
-                execution.status = if result.is_ok() {
-                    ExecutionStatus::Succeeded
-                } else {
-                    ExecutionStatus::Failed
-                };
-                execution.exit_code = Some(if result.is_ok() { 0 } else { 1 });
-                execution.finished_at =
-                    Some(chrono::Utc::now().format("%Y-%m-%d %H:%M:%S").to_string());
-                namespace.put(key.as_bytes(), &serde_json::to_vec(&execution)?)?;
+        execution.status =
+            if result.is_ok() { ExecutionStatus::Succeeded } else { ExecutionStatus::Failed };
+        execution.exit_code = Some(if result.is_ok() { 0 } else { 1 });
+        execution.finished_at = Some(chrono::Utc::now().format("%Y-%m-%d %H:%M:%S").to_string());
+        if !self.node_service.update_execution(execution)? {
+            match std::fs::remove_file(log_path) {
+                Ok(()) => {}
+                Err(error) if error.kind() == std::io::ErrorKind::NotFound => {}
+                Err(error) => return Err(error.into()),
             }
-            Err(giong_kv::error::Error::NotFound) => {}
-            Err(error) => return Err(error.into()),
         }
         Ok(())
     }
@@ -251,7 +192,7 @@ impl UseCase for ExecuteNodeUseCase {
     type Output = ();
 
     async fn execute(&self, input: Self::Input) -> Result<(), Exception> {
-        let Some(execution) = self.claim_pending_execution(input.node_id)? else {
+        let Some(execution) = self.node_service.claim_pending_execution(input.node_id)? else {
             return Ok(());
         };
         let log_path = Config::data_dir()

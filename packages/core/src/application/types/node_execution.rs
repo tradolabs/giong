@@ -1,5 +1,6 @@
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum ExecutionStatus {
@@ -10,11 +11,13 @@ pub enum ExecutionStatus {
     Failed,
     Interrupted,
 }
+
 impl ExecutionStatus {
     pub fn active(self) -> bool {
         matches!(self, Self::Pending | Self::Executing)
     }
 }
+
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct NodeExecution {
     pub id: Uuid,

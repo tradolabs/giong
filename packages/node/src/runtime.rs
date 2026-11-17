@@ -161,6 +161,38 @@ impl Plugin {
     }
 }
 
+pub fn kinds() -> anyhow::Result<Vec<String>> {
+    let root = plugins_dir()?;
+    let mut directories = vec![root.clone()];
+    let mut kinds = Vec::new();
+    while let Some(directory) = directories.pop() {
+        let entries = match fs::read_dir(directory) {
+            Ok(entries) => entries,
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound => continue,
+            Err(error) => return Err(error.into()),
+        };
+        for entry in entries {
+            let entry = entry?;
+            let file = entry.path();
+            let file_type = entry.file_type()?;
+            if file_type.is_dir() {
+                directories.push(file);
+            } else if file_type.is_file() && file.extension().is_some_and(|ext| ext == "wasm") {
+                let kind = file
+                    .strip_prefix(&root)?
+                    .with_extension("")
+                    .to_string_lossy()
+                    .replace(std::path::MAIN_SEPARATOR, "/");
+                if path(&kind).is_ok() {
+                    kinds.push(kind);
+                }
+            }
+        }
+    }
+    kinds.sort();
+    Ok(kinds)
+}
+
 pub fn path(kind: &str) -> anyhow::Result<PathBuf> {
     if kind.is_empty()
         || kind.split('/').any(|part| {
@@ -170,12 +202,15 @@ pub fn path(kind: &str) -> anyhow::Result<PathBuf> {
     {
         bail!("Invalid node plugin kind: {kind}");
     }
-    let root = match std::env::var_os("GIONG_PLUGINS_DIR").filter(|path| !path.is_empty()) {
+    Ok(plugins_dir()?.join(format!("{kind}.wasm")))
+}
+
+fn plugins_dir() -> anyhow::Result<PathBuf> {
+    Ok(match std::env::var_os("GIONG_PLUGINS_DIR").filter(|path| !path.is_empty()) {
         Some(root) => PathBuf::from(root),
         None => PathBuf::from(
             std::env::var_os("HOME").context("HOME is not set; configure GIONG_PLUGINS_DIR")?,
         )
         .join(".giong/plugins"),
-    };
-    Ok(root.join(format!("{kind}.wasm")))
+    })
 }

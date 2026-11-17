@@ -1,6 +1,6 @@
 use crate::application::exceptions::base::Exception;
 use crate::application::exceptions::resource::{Resource, ResourceException};
-use crate::application::services::node_service::NodeService;
+use crate::application::services::node::NodeService;
 use crate::application::types::node_execution::NodeExecution;
 use crate::application::use_cases::use_case::UseCase;
 use giong_database::Database;
@@ -40,12 +40,9 @@ impl UseCase for GetNodeDetailsUseCase {
             return Err(ResourceException::NotFound(Resource::Node).into());
         }
         let storage = Storage::new(self.kv.namespace(&format!("nodes/{node_id}")));
-        let output = storage
-            .get(OUTPUT_KEY)?
-            .map(|bytes| serde_json::from_slice(&bytes))
-            .transpose()?;
-        let mut executions = self.node_service.get_executions(node_id)?;
-        executions.truncate(10);
+        let output =
+            storage.get(OUTPUT_KEY)?.map(|bytes| serde_json::from_slice(&bytes)).transpose()?;
+        let executions = self.node_service.get_executions(node_id)?;
         Ok(NodeDetails { output, executions })
     }
 }

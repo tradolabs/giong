@@ -1,6 +1,6 @@
 use super::use_case::UseCase;
 use crate::application::exceptions::base::Exception;
-use crate::application::services::flow_service::FlowService;
+use crate::application::services::flow::FlowService;
 use giong_database::Database;
 use giong_database::entities::flow_entity::FlowEntity;
 use giong_database::repositories::types::condition::Condition;

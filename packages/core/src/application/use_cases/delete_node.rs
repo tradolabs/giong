@@ -1,7 +1,7 @@
 use crate::application::exceptions::base::Exception;
 use crate::application::exceptions::resource::{Resource, ResourceException};
-use crate::application::services::flow_service::FlowService;
-use crate::application::services::node_service::NodeService;
+use crate::application::services::flow::FlowService;
+use crate::application::services::node::NodeService;
 use crate::application::use_cases::use_case::UseCase;
 use crate::config::Config;
 use giong_database::Database;

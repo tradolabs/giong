@@ -1,7 +1,7 @@
 use crate::presentation::dtos::requests::create_flow::CreateFlowRequestDto;
 use crate::presentation::dtos::requests::update_flow::UpdateFlowRequestDto;
 use crate::presentation::dtos::responses::flow::FlowResponseDto;
-use crate::presentation::exceptions::http_exception::HttpException;
+use crate::presentation::exceptions::http::HttpException;
 use crate::presentation::extractors::validated_json::ValidatedJson;
 use axum::{
     Json,
@@ -12,14 +12,30 @@ use axum::{
 use giong_core::application::application::Application;
 use giong_core::application::use_cases::create_flow::CreateFlowInput;
 use giong_core::application::use_cases::update_flow::UpdateFlowInput;
+use giong_database::entities::flow_entity::FlowEntity;
 use std::sync::Arc;
 use uuid::Uuid;
+
+fn flow_response(
+    application: &Application,
+    flow: FlowEntity,
+) -> Result<FlowResponseDto, HttpException> {
+    let mut response = FlowResponseDto::from(flow);
+    for node in &mut response.nodes {
+        node.set_execution(application.get_latest_node_execution(node.id)?);
+    }
+    Ok(response)
+}
 
 pub(in crate::presentation) async fn get_flows(
     State(application): State<Arc<Application>>,
 ) -> Result<impl IntoResponse, HttpException> {
     let flows = application.get_flows().await?;
-    Ok(Json(flows.into_iter().map(FlowResponseDto::from).collect::<Vec<_>>()))
+    let responses = flows
+        .into_iter()
+        .map(|flow| flow_response(&application, flow))
+        .collect::<Result<Vec<_>, _>>()?;
+    Ok(Json(responses))
 }
 
 pub(in crate::presentation) async fn create_flow(
@@ -32,7 +48,7 @@ pub(in crate::presentation) async fn create_flow(
             inherited_vault_ids: input.inherited_vault_ids,
         })
         .await?;
-    Ok((StatusCode::CREATED, Json(FlowResponseDto::from(flow))))
+    Ok((StatusCode::CREATED, Json(flow_response(&application, flow)?)))
 }
 
 pub(in crate::presentation) async fn update_flow(
@@ -47,7 +63,7 @@ pub(in crate::presentation) async fn update_flow(
             inherited_vault_ids: input.inherited_vault_ids,
         })
         .await?;
-    Ok(Json(FlowResponseDto::from(flow)))
+    Ok(Json(flow_response(&application, flow)?))
 }
 
 pub(in crate::presentation) async fn execute_node(

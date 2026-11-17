@@ -1,3 +1,4 @@
+use giong_core::application::types::node_execution::{ExecutionStatus, NodeExecution};
 use giong_database::entities::node_entity::NodeEntity;
 use serde::Serialize;
 use uuid::Uuid;
@@ -11,6 +12,8 @@ pub(in crate::presentation) struct NodeResponseDto {
     pub kind: String,
     pub properties: serde_json::Value,
     pub triggers: serde_json::Value,
+    pub status: Option<ExecutionStatus>,
+    pub last_execution: Option<NodeExecution>,
     pub created_at: String,
     pub updated_at: String,
 }
@@ -24,8 +27,17 @@ impl From<NodeEntity> for NodeResponseDto {
             kind: entity.kind,
             properties: entity.properties,
             triggers: entity.triggers,
+            status: None,
+            last_execution: None,
             created_at: entity.created_at,
             updated_at: entity.updated_at,
         }
+    }
+}
+
+impl NodeResponseDto {
+    pub(in crate::presentation) fn set_execution(&mut self, execution: Option<NodeExecution>) {
+        self.status = execution.as_ref().map(|execution| execution.status);
+        self.last_execution = execution;
     }
 }

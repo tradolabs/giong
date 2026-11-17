@@ -33,12 +33,8 @@ impl UseCase for UpdateSecretUseCase {
             .await?
             .ok_or(ResourceException::NotFound(Resource::Secret))?;
 
-        let encrypted_value = encrypt_secret(
-            self.config.encryption_key.as_deref(),
-            vault_id,
-            &secret.key,
-            &value,
-        )?;
+        let encrypted_value =
+            encrypt_secret(self.config.encryption_key.as_deref(), vault_id, &secret.key, &value)?;
 
         self.database
             .secrets

@@ -2,7 +2,7 @@ use crate::presentation::dtos::requests::create_node::CreateNodeRequestDto;
 use crate::presentation::dtos::requests::get_logs::GetLogsRequestDto;
 use crate::presentation::dtos::requests::update_node::UpdateNodeRequestDto;
 use crate::presentation::dtos::responses::node::NodeResponseDto;
-use crate::presentation::exceptions::http_exception::{HttpException, NotFoundException};
+use crate::presentation::exceptions::http::{HttpException, NotFoundException};
 use crate::presentation::extractors::validated_json::ValidatedJson;
 use axum::{
     Json,
@@ -15,6 +15,12 @@ use giong_core::application::use_cases::get_node_logs::GetNodeLogsInput;
 use giong_core::application::use_cases::update_node::UpdateNodeInput;
 use std::sync::Arc;
 use uuid::Uuid;
+
+pub(in crate::presentation) async fn get_kinds(
+    State(application): State<Arc<Application>>,
+) -> Result<impl IntoResponse, HttpException> {
+    Ok(Json(application.get_node_kinds().await?))
+}
 
 pub(in crate::presentation) async fn get_details(
     State(application): State<Arc<Application>>,
@@ -74,5 +80,7 @@ pub(in crate::presentation) async fn update_node(
             triggers: input.triggers,
         })
         .await?;
-    Ok(Json(NodeResponseDto::from(node)))
+    let mut response = NodeResponseDto::from(node);
+    response.set_execution(application.get_latest_node_execution(response.id)?);
+    Ok(Json(response))
 }

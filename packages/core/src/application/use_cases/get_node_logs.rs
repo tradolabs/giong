@@ -1,6 +1,6 @@
 use super::use_case::UseCase;
 use crate::application::exceptions::base::Exception;
-use crate::application::services::node_service::NodeService;
+use crate::application::services::node::NodeService;
 use crate::config::Config;
 use giong_di::Injectable;
 use std::io::ErrorKind;

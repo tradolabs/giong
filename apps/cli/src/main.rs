@@ -17,7 +17,7 @@ struct Cli {
 async fn main() -> anyhow::Result<()> {
     dotenvy::dotenv().ok();
     let cli = Cli::parse();
-    let application = giong_core::bootstrap::ensure_initialized(Config::default()).await?;
+    let application = giong_core::bootstrap::ensure_cli_initialized(Config::default()).await?;
     match cli.command {
         Command::ResetAdminPassword => actions::reset_admin_password::execute(&application).await,
     }

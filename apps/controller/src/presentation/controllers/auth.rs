@@ -1,7 +1,7 @@
 use crate::presentation::dtos::{
     requests::sign_in::SignInRequestDto, responses::sign_in::SignInResponseDto,
 };
-use crate::presentation::exceptions::http_exception::HttpException;
+use crate::presentation::exceptions::http::HttpException;
 use crate::presentation::extractors::validated_json::ValidatedJson;
 use axum::{Json, extract::State, response::IntoResponse};
 use giong_core::application::application::Application;

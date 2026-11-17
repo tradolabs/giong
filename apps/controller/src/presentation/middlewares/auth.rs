@@ -1,5 +1,5 @@
-use crate::presentation::exceptions::http_exception::HttpException;
-use crate::presentation::exceptions::http_exception::UnauthorizedException;
+use crate::presentation::exceptions::http::HttpException;
+use crate::presentation::exceptions::http::UnauthorizedException;
 use axum::{
     extract::{Request, State},
     http::header,

@@ -1,7 +1,6 @@
 use crate::application::exceptions::base::Exception;
 use crate::application::exceptions::resource::{Resource, ResourceException};
-use crate::application::services::flow_service::FlowService;
-use crate::application::services::node_service::NodeService;
+use crate::application::services::node::NodeService;
 use crate::application::use_cases::use_case::UseCase;
 use giong_database::Database;
 use giong_database::entities::node_entity::NodeEntity;
@@ -24,7 +23,6 @@ pub struct UpdateNodeInput {
 pub struct UpdateNodeUseCase {
     database: Arc<Database>,
     node_service: Arc<NodeService>,
-    flow_service: Arc<FlowService>,
 }
 
 impl UseCase for UpdateNodeUseCase {
@@ -49,23 +47,18 @@ impl UseCase for UpdateNodeUseCase {
             )
             .await?;
 
-        let changes = Document::new()
-            .set("name", input.name)
-            .set("kind", input.kind)
-            .set("properties", input.properties)
-            .set("triggers", serde_json::to_value(&input.triggers)?);
         self.database
             .nodes
-            .update_one(Condition::new().eq("id", input.node_id).eq("flow_id", flow.id), changes)
+            .update_one(
+                Condition::new().eq("id", input.node_id).eq("flow_id", flow.id),
+                Document::new()
+                    .set("name", input.name)
+                    .set("kind", input.kind)
+                    .set("properties", input.properties)
+                    .set("triggers", serde_json::to_value(&input.triggers)?),
+            )
             .await?;
-        let node = self
-            .database
-            .nodes
-            .find_one(Condition::new().eq("id", input.node_id).eq("flow_id", flow.id))
-            .await?
-            .ok_or(ResourceException::NotFound(Resource::Node))?;
-        self.node_service.sync_interval_trigger(flow.id, node.id, &input.triggers).await?;
-        self.flow_service.invalidate_graph(flow.id).await;
-        Ok(node)
+
+        self.node_service.sync_node(flow.id, input.node_id, &input.triggers).await
     }
 }

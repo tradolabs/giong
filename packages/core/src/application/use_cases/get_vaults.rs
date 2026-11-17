@@ -15,6 +15,8 @@ impl UseCase for GetVaultsUseCase {
     type Input = ();
     type Output = Vec<VaultEntity>;
     async fn execute(&self, _: ()) -> Result<Self::Output, Exception> {
-        Ok(self.database.vaults.find(Condition::new().eq("scope", VaultScope::Global)).await?)
+        let vaults =
+            self.database.vaults.find(Condition::new().eq("scope", VaultScope::Global)).await?;
+        Ok(vaults)
     }
 }

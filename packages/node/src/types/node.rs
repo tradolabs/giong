@@ -35,9 +35,32 @@ fn empty_properties() -> Value {
     serde_json::json!({})
 }
 
-#[derive(Clone, Serialize, Deserialize)]
+#[derive(Clone, Serialize)]
 #[serde(tag = "type", rename_all = "snake_case", deny_unknown_fields)]
 pub enum Trigger {
     Interval { seconds: u64 },
-    Event { node: String, event: String },
+    Event { node: String },
+}
+
+impl<'de> Deserialize<'de> for Trigger {
+    fn deserialize<D: serde::Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        #[derive(Deserialize)]
+        #[serde(tag = "type", rename_all = "snake_case", deny_unknown_fields)]
+        enum Input {
+            Interval {
+                seconds: u64,
+            },
+            Event {
+                node: String,
+                // Existing stored triggers and flow files may still include an event name.
+                #[serde(default, rename = "event")]
+                _legacy_event: serde::de::IgnoredAny,
+            },
+        }
+
+        Ok(match Input::deserialize(deserializer)? {
+            Input::Interval { seconds } => Self::Interval { seconds },
+            Input::Event { node, .. } => Self::Event { node },
+        })
+    }
 }
