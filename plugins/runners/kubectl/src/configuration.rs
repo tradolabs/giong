@@ -48,7 +48,10 @@ impl DeploymentConfiguration {
         if let Some(kubeconfig) = properties.kubeconfig {
             let value = match kubeconfig {
                 SecretValue::Literal(value) => value,
-                SecretValue::Reference { secret } => secrets::get(&secret)?,
+                SecretValue::Reference { secret } => match secret.vault() {
+                    Some(vault) => secrets::get_from_vault(vault, secret.key())?,
+                    None => secrets::get(secret.key())?,
+                },
             };
             env.insert("KUBECONFIG".into(), value);
         }

@@ -7,7 +7,8 @@ flow:
       properties:
         repo_url: https://github.com/trado/gitops
         token:
-          secret: git_token
+          secret:
+            key: git_token
       triggers:
         - type: interval
           seconds: 60
@@ -20,7 +21,10 @@ flow:
         values_file: environments/values.yaml
         namespace: trado
         kubeconfig:
-          secret: kubeconfig
+          secret:
+            key: kubeconfig
+            # Omit vault for the flow vault; otherwise use an attached vault's name.
+            # vault: kubernetes
       triggers:
         - type: event
           node: repository

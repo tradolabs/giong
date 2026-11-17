@@ -55,11 +55,12 @@ impl ExecuteNodeUseCase {
         let runtime = tokio::runtime::Handle::current();
 
         Ok(Secrets {
-            get: Arc::new(move |key| {
+            get: Arc::new(move |requested_vault, key| {
                 runtime
                     .block_on(secret_service.get_secret_value(
                         Some(vault_id),
                         &inherited_vault_ids,
+                        requested_vault,
                         key,
                     ))
                     .map_err(anyhow::Error::from)

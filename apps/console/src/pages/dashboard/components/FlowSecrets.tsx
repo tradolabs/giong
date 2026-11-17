@@ -66,6 +66,7 @@ export function FlowSecrets({ flow, onSignOut, onSaved }: Props) {
         />
       )}
       <h3>Inherited vaults</h3>
+      <p className="ui-hint">Attach shared vaults to use their secrets. Each reference must specify its vault; keys without a vault use only the flow vault.</p>
       {loading && <p role="status">Loading vaults…</p>}
       <div className="secret-set-choices">
         {vaults
@@ -88,9 +89,6 @@ export function FlowSecrets({ flow, onSignOut, onSaved }: Props) {
               />
               <span>
                 {vault.name}
-                {inherited.includes(vault.id)
-                  ? ` (${inherited.indexOf(vault.id) + 1})`
-                  : ""}
               </span>
             </label>
           ))}

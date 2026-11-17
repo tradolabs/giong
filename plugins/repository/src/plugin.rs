@@ -39,7 +39,10 @@ fn checkout(properties: RepositoryProperties) -> Result<CheckoutOutput, String> 
         .token
         .map(|token| match token {
             SecretValue::Literal(value) => Ok(value),
-            SecretValue::Reference { secret } => secrets::get(&secret),
+            SecretValue::Reference { secret } => match secret.vault() {
+                Some(vault) => secrets::get_from_vault(vault, secret.key()),
+                None => secrets::get(secret.key()),
+            },
         })
         .transpose()?;
     let request =

@@ -15,7 +15,10 @@ interface storage {
 }
 
 interface secrets {
+    // Unqualified keys are resolved only in the flow's own vault.
     get: func(key: string) -> result<string, string>;
+    // Vault must be the flow vault or an attached vault, identified by name.
+    get-from-vault: func(vault: string, key: string) -> result<string, string>;
 }
 
 interface events {
