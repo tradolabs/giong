@@ -12,6 +12,7 @@ use std::{
 };
 use wasmtime::component::{Component, Linker, ResourceTable};
 use wasmtime::{Engine, Store, StoreLimits, StoreLimitsBuilder};
+use wasmtime_wasi::cli::OutputFile;
 use wasmtime_wasi::{WasiCtx, WasiCtxBuilder, WasiCtxView, WasiView};
 
 pub(crate) mod bindings {
@@ -83,11 +84,12 @@ impl Plugin {
                 }
             }
         };
-        let wasi = WasiCtxBuilder::new()
-            .allow_ip_name_lookup(false)
-            .allow_tcp(false)
-            .allow_udp(false)
-            .build();
+        let mut wasi = WasiCtxBuilder::new();
+        if let Some(execution) = &tools.execution {
+            wasi.stdout(OutputFile::new(execution.logger.try_clone()?));
+            wasi.stderr(OutputFile::new(execution.logger.try_clone()?));
+        }
+        let wasi = wasi.allow_ip_name_lookup(false).allow_tcp(false).allow_udp(false).build();
         let mut store = Store::new(
             engine,
             Host {
@@ -138,9 +140,10 @@ impl Plugin {
             |host| host,
         )
         .map_err(|error| anyhow::anyhow!("{error:#}"))?;
-        let node = bindings::Node::instantiate(&mut store, &component, &linker)
-            .map_err(|error| anyhow::anyhow!("{error:#}"))
-            .context("Plugin does not implement giong:node/node@0.1.0")?;
+        let node =
+            bindings::Node::instantiate(&mut store, &component, &linker).map_err(|error| {
+                anyhow::anyhow!("Plugin does not implement giong:node/node@0.1.0: {error:#}")
+            })?;
         Ok(Self { store, node })
     }
 

@@ -1,10 +1,13 @@
 wit_bindgen::generate!({ path: "../../../packages/node/wit", world: "node" });
 
+use self::giong::node::{events, git, secrets, storage};
 use crate::types::{RepositoryOutput, RepositoryProperties};
 use giong_node::types::metadata::Metadata;
 use giong_node::types::node::OUTPUT_KEY;
 use giong_node::types::tools::git::{CheckoutInputs, CheckoutOutput};
 use giong_node::types::tools::secrets::SecretValue;
+
+const COMMIT_SHA_KEY: &str = "repository:commit-sha";
 
 struct Repository;
 
@@ -20,32 +23,49 @@ impl Guest for Repository {
     }
 
     fn execute(args: String) -> Result<(), String> {
-        let inputs: RepositoryProperties =
+        let properties: RepositoryProperties =
             serde_json::from_str(&args).map_err(|_| "Invalid checkout properties".to_string())?;
-        let token = inputs
-            .token
-            .map(|token| match token {
-                SecretValue::Literal(value) => Ok(value),
-                SecretValue::Reference { secret } => giong::node::secrets::get(&secret),
-            })
-            .transpose()?;
-        let request =
-            CheckoutInputs { repo_url: inputs.repo_url, revision: inputs.revision, token };
-        let output = giong::node::git::checkout(
-            &serde_json::to_string(&request).map_err(|_| "Invalid checkout inputs")?,
-        )?;
-        let output: CheckoutOutput =
-            serde_json::from_str(&output).map_err(|_| "Invalid checkout output")?;
-        let previous = giong::node::storage::get("repository:commit-sha")?;
-        let bytes =
-            serde_json::to_vec(&RepositoryOutput { repository_path: output.repository_path })
-                .map_err(|_| "Could not encode repository output")?;
-        giong::node::storage::put(OUTPUT_KEY, &bytes)?;
-        if previous.as_deref() != Some(output.commit_sha.as_bytes()) {
-            giong::node::events::emit("changed")?;
-            giong::node::storage::put("repository:commit-sha", output.commit_sha.as_bytes())?;
-        }
-        Ok(())
+        println!("Preparing repository checkout...");
+
+        let output = checkout(properties)?;
+        let previous = storage::get(COMMIT_SHA_KEY)?;
+        save_output(output.repository_path)?;
+        publish_change(&output.commit_sha, previous.as_deref())
     }
 }
+
+fn checkout(properties: RepositoryProperties) -> Result<CheckoutOutput, String> {
+    let token = properties
+        .token
+        .map(|token| match token {
+            SecretValue::Literal(value) => Ok(value),
+            SecretValue::Reference { secret } => secrets::get(&secret),
+        })
+        .transpose()?;
+    let request =
+        CheckoutInputs { repo_url: properties.repo_url, revision: properties.revision, token };
+    let request = serde_json::to_string(&request).map_err(|_| "Invalid checkout inputs")?;
+    let output = git::checkout(&request)?;
+    serde_json::from_str(&output).map_err(|_| "Invalid checkout output".into())
+}
+
+fn save_output(repository_path: String) -> Result<(), String> {
+    let output = RepositoryOutput { repository_path };
+    let bytes = serde_json::to_vec(&output).map_err(|_| "Could not encode repository output")?;
+    storage::put(OUTPUT_KEY, &bytes)?;
+    println!("Repository output saved.");
+    Ok(())
+}
+
+fn publish_change(commit_sha: &str, previous: Option<&[u8]>) -> Result<(), String> {
+    if previous == Some(commit_sha.as_bytes()) {
+        println!("No new commits detected.");
+        return Ok(());
+    }
+
+    println!("New commit detected; triggering dependent nodes...");
+    events::emit("changed")?;
+    storage::put(COMMIT_SHA_KEY, commit_sha.as_bytes())
+}
+
 export!(Repository);

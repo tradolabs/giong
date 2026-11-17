@@ -2,6 +2,7 @@ use crate::runtime::{Host, bindings};
 use crate::types::tools::git::{ChangedFilesInputs, CheckoutInputs, CheckoutOutput};
 use anyhow::{Context, bail};
 use std::fs;
+use std::io::Write;
 
 impl bindings::giong::node::git::Host for Host {
     fn checkout(&mut self, inputs: String) -> Result<String, String> {
@@ -14,21 +15,35 @@ impl bindings::giong::node::git::Host for Host {
             if inputs.repo_url.trim().is_empty() || inputs.revision.trim().is_empty() {
                 bail!("Repository URL and revision are required");
             }
+            let mut logger = self.execution.as_mut().map(|execution| &mut execution.logger);
+            if let Some(logger) = &mut logger {
+                writeln!(logger, "Resolving repository revision...")?;
+            }
             let revision = giong_git::resolve_revision(
                 &inputs.repo_url,
                 &inputs.revision,
                 inputs.token.as_deref(),
             )?;
+            if let Some(logger) = &mut logger {
+                writeln!(logger, "Resolved commit: {revision}")?;
+                writeln!(logger, "Cloning repository...")?;
+            }
             let parent = root.parent().context("Invalid node workspace")?;
             fs::create_dir_all(parent)?;
             let staging = tempfile::tempdir_in(parent)?;
             let checkout = staging.path().join("repository");
             giong_git::checkout(&inputs.repo_url, &checkout, &revision, inputs.token.as_deref())?;
+            if let Some(logger) = &mut logger {
+                writeln!(logger, "Repository cloned; preparing workspace...")?;
+            }
             if root.exists() {
                 fs::remove_dir_all(root)?;
             }
             fs::rename(checkout, root)?;
             let root = fs::canonicalize(root)?;
+            if let Some(logger) = &mut logger {
+                writeln!(logger, "Checkout complete: {revision}")?;
+            }
             Ok(serde_json::to_string(&CheckoutOutput {
                 repository_path: root.to_str().context("Repository path is not UTF-8")?.into(),
                 commit_sha: revision,
