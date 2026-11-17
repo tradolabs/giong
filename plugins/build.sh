@@ -9,7 +9,9 @@ case "$destination" in
     *) destination="$PWD/$destination" ;;
 esac
 cd "$root"
-for package in giong-repository-source giong-kubectl-runner; do
+# kubectl depends on repository with its component feature disabled, which can
+# overwrite repository's .wasm artifact. Build the source component last.
+for package in giong-kubectl-runner giong-repository-source; do
     cargo build --locked --release --target wasm32-wasip2 -p "$package"
 done
 output="${CARGO_TARGET_DIR:-target}/wasm32-wasip2/release"
