@@ -9,6 +9,7 @@ import { SettingsTabs } from "./SettingsTabs";
 import { NodeTriggersEditor } from "./NodeTriggersEditor";
 import { DeleteNodeDialog } from "./DeleteNodeDialog";
 import { NodeTypePicker } from "./NodeTypePicker";
+import { YamlEditor } from "./YamlEditor";
 import "./FlowSettingsDialog.css";
 
 interface Props {
@@ -104,7 +105,7 @@ export function NodeDialog({ flow, node, nodeKinds, nodeKindsLoading, nodeKindsE
           <section hidden={tab !== "configuration"} role="tabpanel" id={`${tabsId}-configuration-panel`} aria-labelledby={`${tabsId}-configuration-tab`}>
           <label>
             Configuration (YAML)
-            <textarea className="node-properties" rows={8} spellCheck={false} value={draft.configuration} onChange={event => setDraft({ ...draft, configuration: event.target.value })} />
+            <YamlEditor value={draft.configuration} onChange={configuration => setDraft({ ...draft, configuration })} />
           </label>
           </section>
           <section hidden={tab !== "trigger"} role="tabpanel" id={`${tabsId}-trigger-panel`} aria-labelledby={`${tabsId}-trigger-tab`}>
