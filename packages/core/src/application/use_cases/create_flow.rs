@@ -1,10 +1,10 @@
 use crate::application::exceptions::base::Exception;
 use crate::application::exceptions::resource::{Resource, ResourceException};
+use crate::application::services::flow::FlowService;
 use crate::application::use_cases::use_case::UseCase;
 use giong_database::Database;
 use giong_database::entities::flow_entity::FlowEntity;
 use giong_database::entities::vault_entity::VaultScope;
-use giong_database::error::Error as DatabaseError;
 use giong_database::repositories::types::{condition::Condition, document::Document};
 use giong_di::Injectable;
 use std::collections::HashSet;
@@ -41,17 +41,6 @@ impl CreateFlowUseCase {
         }
         Ok(())
     }
-
-    async fn unique_vault_name(&self, flow_name: &str) -> Result<String, DatabaseError> {
-        let base = format!("{flow_name} secrets");
-        let mut candidate = base.clone();
-        let mut suffix = 2;
-        while self.database.vaults.exists(Condition::new().eq("name", candidate.as_str())).await? {
-            candidate = format!("{base} ({suffix})");
-            suffix += 1;
-        }
-        Ok(candidate)
-    }
 }
 
 impl UseCase for CreateFlowUseCase {
@@ -70,7 +59,7 @@ impl UseCase for CreateFlowUseCase {
         let flow = self
             .database
             .transaction(async || {
-                let vault_name = self.unique_vault_name(&flow_name).await?;
+                let vault_name = FlowService::unique_vault_name(&self.database, &flow_name).await?;
                 let vault = self
                     .database
                     .vaults

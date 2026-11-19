@@ -1,4 +1,3 @@
-use giong_node::types::tools::secrets::SecretValue;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 
@@ -10,7 +9,7 @@ pub(crate) struct KubectlProperties {
     pub values_file: Option<String>,
     pub namespace: Option<String>,
     pub release: Option<String>,
-    pub kubeconfig: Option<SecretValue>,
+    pub kubeconfig: Option<serde_json::Value>,
     #[serde(default)]
     pub env: BTreeMap<String, String>,
 }

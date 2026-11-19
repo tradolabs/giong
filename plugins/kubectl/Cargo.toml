@@ -1,0 +1,19 @@
+[package]
+name = "giong-plugins-kubectl"
+version.workspace = true
+edition = "2024"
+autolib = false
+
+[[bin]]
+name = "giong-plugins-kubectl"
+path = "src/lib.rs"
+
+[dependencies]
+anyhow.workspace = true
+giong-git = { path = "../../packages/git" }
+giong-plugins-repository = { path = "../repository" }
+giong-node = { path = "../../packages/node", default-features = false }
+serde.workspace = true
+serde_json.workspace = true
+sha2 = "0.10"
+tempfile = "3"

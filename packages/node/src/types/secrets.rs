@@ -7,6 +7,14 @@ pub enum SecretValue {
     Reference { secret: SecretReference },
 }
 
+impl TryFrom<serde_json::Value> for SecretValue {
+    type Error = serde_json::Error;
+
+    fn try_from(value: serde_json::Value) -> Result<Self, Self::Error> {
+        serde_json::from_value(value)
+    }
+}
+
 #[derive(Serialize, Deserialize)]
 #[serde(untagged, deny_unknown_fields)]
 pub enum SecretReference {

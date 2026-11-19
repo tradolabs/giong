@@ -1,4 +1,5 @@
-pub mod types;
-
-#[cfg(all(feature = "component", target_arch = "wasm32"))]
 mod plugin;
+
+fn main() -> std::process::ExitCode {
+    giong_node::sdk::run::<plugin::Repository>()
+}

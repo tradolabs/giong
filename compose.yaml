@@ -1,0 +1,27 @@
+services:
+  giong:
+    image: ${GIONG_IMAGE:-giong:latest}
+    environment:
+      GIONG_PLUGIN_IMAGE_PREFIX: ${GIONG_PLUGIN_IMAGE_PREFIX:-giong-plugin-}
+      GIONG_PLUGIN_IMAGE_TAG: ${GIONG_PLUGIN_IMAGE_TAG:-latest}
+      GIONG_PLUGIN_NETWORK: ${GIONG_PLUGIN_NETWORK:-${COMPOSE_PROJECT_NAME}_default}
+      GIONG_PLUGIN_WORKSPACE_VOLUME: ${GIONG_PLUGIN_WORKSPACE_VOLUME:-${COMPOSE_PROJECT_NAME}_plugin-workspaces}
+      GIONG_DATABASE_URL: ${GIONG_DATABASE_URL:-}
+      GIONG_JWT_SECRET: ${GIONG_JWT_SECRET:-}
+      GIONG_ENCRYPTION_KEY: ${GIONG_ENCRYPTION_KEY:-}
+    ports:
+      - "${GIONG_PORT:-8080}:80"
+    volumes:
+      - giong-data:/data/.giong
+      - /var/run/docker.sock:/var/run/docker.sock
+      - type: volume
+        source: plugin-workspaces
+        target: /workspace
+        read_only: true
+        volume:
+          nocopy: true
+
+volumes:
+  giong-data:
+  plugin-workspaces:
+    name: ${GIONG_PLUGIN_WORKSPACE_VOLUME:-${COMPOSE_PROJECT_NAME}_plugin-workspaces}

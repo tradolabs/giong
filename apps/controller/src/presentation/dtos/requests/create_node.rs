@@ -1,4 +1,4 @@
-use giong_node::types::node::Trigger;
+use giong_node::host::Trigger;
 use serde::Deserialize;
 use validator::Validate;
 

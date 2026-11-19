@@ -8,7 +8,7 @@ use giong_database::Database;
 use giong_database::repositories::types::{condition::Condition, document::Document};
 use giong_di::Injectable;
 use giong_kv::kv::Kv;
-use giong_node::types::node::Trigger;
+use giong_node::host::Trigger;
 use std::sync::Arc;
 use uuid::Uuid;
 
@@ -65,13 +65,15 @@ impl UseCase for DeleteNodeUseCase {
             .await?;
         self.node_service.unschedule_node(node_id).await?;
         self.flow_service.invalidate_graph(flow_id).await;
+        if let Err(error) = giong_node::runtime::remove_workspace(flow_id, node_id).await {
+            eprintln!("Could not remove node workspace {node_id}: {error}");
+        }
         let kv = self.kv.clone();
         let cleanup = tokio::task::spawn_blocking(move || -> anyhow::Result<()> {
             kv.namespace(&format!("nodes/{node_id}")).truncate()?;
-            let source = node_id.to_string();
             let data_dir = Config::data_dir();
             for directory in [
-                data_dir.join("logs").join("nodes").join(&source),
+                NodeService::node_logs_dir(node_id),
                 data_dir
                     .join("workspaces")
                     .join(flow_id.to_string())

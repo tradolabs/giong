@@ -1,0 +1,18 @@
+[package]
+name = "giong-plugins-flow"
+version.workspace = true
+edition = "2024"
+autolib = false
+
+[[bin]]
+name = "giong-plugins-flow"
+path = "src/lib.rs"
+
+[dependencies]
+anyhow.workspace = true
+giong-git = { path = "../../packages/git" }
+giong-node = { path = "../../packages/node", default-features = false }
+serde.workspace = true
+serde_json.workspace = true
+serde_yaml_ng = "0.10.0"
+giong-plugins-repository = { path = "../repository" }

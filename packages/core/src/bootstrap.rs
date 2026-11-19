@@ -3,6 +3,7 @@ use crate::application::helpers::flow_graph::FlowGraphCache;
 use crate::application::ports::queue::queue_manager::QueueManager;
 use crate::application::services::flow::FlowService;
 use crate::application::services::node::NodeService;
+use crate::application::services::node_host::NodeHostService;
 use crate::application::services::secret::SecretService;
 use crate::application::use_cases::create_node::CreateNodeUseCase;
 use crate::application::use_cases::create_secret::CreateSecretUseCase;
@@ -75,6 +76,7 @@ pub async fn ensure_initialized(config: Config) -> anyhow::Result<Arc<Applicatio
         .register_type::<NodeService>()
         .register_type::<FlowService>()
         .register_type::<SecretService>()
+        .register_type::<NodeHostService>()
         .register_type::<ResumePendingExecutionsUseCase>()
         .register_type::<CreateVaultUseCase>()
         .register_type::<GetVaultsUseCase>()
@@ -99,6 +101,7 @@ pub async fn ensure_initialized(config: Config) -> anyhow::Result<Arc<Applicatio
         .register_type::<SignInUseCase>();
 
     let container = Arc::new(container);
+    container.get::<NodeHostService>()?;
     container.get::<NodeService>()?.sync_all_interval_triggers().await?;
     let application = Arc::new(Application::new(Arc::clone(&container))?);
     publisher.with_state(container).handler(execute_node::handle).register().await?;

@@ -52,6 +52,9 @@ impl UseCase for DeleteFlowUseCase {
             self.node_service.unschedule_node(node.id).await?;
         }
         self.flow_service.invalidate_graph(id).await;
+        if let Err(error) = giong_node::runtime::remove_flow_workspace(id).await {
+            eprintln!("Could not remove flow workspace {id}: {error}");
+        }
         let kv = self.kv.clone();
         let cleanup = tokio::task::spawn_blocking(move || -> anyhow::Result<()> {
             let scope = id.to_string();

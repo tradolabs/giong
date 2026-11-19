@@ -14,7 +14,7 @@ flow:
           seconds: 60
 
     - name: deploy
-      type: runners/kubectl
+      type: kubectl
       properties:
         source: repository
         path: deployments/trado

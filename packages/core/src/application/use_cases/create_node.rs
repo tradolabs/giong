@@ -7,7 +7,7 @@ use giong_database::Database;
 use giong_database::entities::node_entity::NodeEntity;
 use giong_database::repositories::types::{condition::Condition, document::Document};
 use giong_di::Injectable;
-use giong_node::types::node::Trigger;
+use giong_node::host::Trigger;
 use std::sync::Arc;
 use uuid::Uuid;
 pub struct CreateNodeInput {
@@ -33,19 +33,20 @@ impl UseCase for CreateNodeUseCase {
             .find_one(Condition::new().eq("id", input.flow_id))
             .await?
             .ok_or(ResourceException::NotFound(Resource::Flow))?;
+        let kind = NodeService::canonical_plugin_kind(&input.kind);
         self.node_service
             .validate_flow_nodes(
                 flow.id,
                 None,
                 &input.name,
-                &input.kind,
+                kind,
                 &input.properties,
                 &input.triggers,
             )
             .await?;
         let changes = Document::new()
             .set("name", input.name)
-            .set("kind", input.kind)
+            .set("kind", kind)
             .set("properties", input.properties)
             .set("triggers", serde_json::to_value(&input.triggers)?);
         let node = self
