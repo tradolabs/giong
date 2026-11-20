@@ -1,5 +1,6 @@
 pub mod base;
 pub mod flow;
+pub mod plugin;
 pub mod types;
 pub mod user;
 pub use base::Repository;

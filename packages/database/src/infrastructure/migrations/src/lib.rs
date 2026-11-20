@@ -1,9 +1,12 @@
 pub use sea_orm_migration::prelude::*;
 
 pub mod conventions;
-mod m20261112_000001_initial;
-mod m20261119_000002_remove_trigger_event_name;
-mod m20261119_000003_flatten_builtin_plugin_kinds;
+mod m20261120_000001_create_vaults;
+mod m20261120_000002_create_flows;
+mod m20261120_000003_create_nodes;
+mod m20261120_000004_create_secrets;
+mod m20261120_000005_create_users;
+mod m20261120_000006_create_plugins;
 
 pub struct Migrator;
 
@@ -11,9 +14,12 @@ pub struct Migrator;
 impl MigratorTrait for Migrator {
     fn migrations() -> Vec<Box<dyn MigrationTrait>> {
         vec![
-            Box::new(m20261112_000001_initial::Migration),
-            Box::new(m20261119_000002_remove_trigger_event_name::Migration),
-            Box::new(m20261119_000003_flatten_builtin_plugin_kinds::Migration),
+            Box::new(m20261120_000001_create_vaults::Migration),
+            Box::new(m20261120_000002_create_flows::Migration),
+            Box::new(m20261120_000003_create_nodes::Migration),
+            Box::new(m20261120_000004_create_secrets::Migration),
+            Box::new(m20261120_000005_create_users::Migration),
+            Box::new(m20261120_000006_create_plugins::Migration),
         ]
     }
 }

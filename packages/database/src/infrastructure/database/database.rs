@@ -1,4 +1,5 @@
 use crate::infrastructure::repositories::node::SeaOrmNodeRepository;
+use crate::infrastructure::repositories::plugin::SeaOrmPluginRepository;
 use crate::infrastructure::repositories::{
     secret::SeaOrmSecretRepository, vault::SeaOrmVaultRepository,
 };
@@ -42,6 +43,7 @@ impl Database {
     pub(crate) fn into_database(self: Arc<Self>) -> crate::database::Database {
         crate::database::Database {
             nodes: Box::new(SeaOrmNodeRepository::new(self.clone())),
+            plugins: Box::new(SeaOrmPluginRepository::new(self.clone())),
             vaults: Box::new(SeaOrmVaultRepository::new(self.clone())),
             secrets: Box::new(SeaOrmSecretRepository::new(self.clone())),
             flows: Box::new(SeaOrmFlowRepository::new(self.clone())),
