@@ -42,7 +42,7 @@ jobs:
         with:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/giong
           tags: |
-            type=raw,value=${{ github.run_id }}
+            type=raw,value=build-${{ github.run_id }}
             type=ref,event=branch
             type=semver,pattern={{version}}
             type=semver,pattern={{major}}.{{minor}}
