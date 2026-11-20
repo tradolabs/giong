@@ -2,6 +2,8 @@ name: Docker
 
 on:
   push:
+    branches:
+      - main
     tags:
       - "[0-9]*"
 
@@ -40,25 +42,30 @@ jobs:
         with:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/giong
           tags: |
+            type=ref,event=branch
             type=semver,pattern={{version}}
             type=semver,pattern={{major}}.{{minor}}
 
-      - name: Set plugin image references
+      - name: Set build targets and plugin image references
+        id: targets
         run: |
-          repository=$(printf '%s' "$GITHUB_REPOSITORY" | tr '[:upper:]' '[:lower:]')
-          printf 'GIONG_PLUGIN_IMAGE_PREFIX=%s/%s/plugins/\n' "$REGISTRY" "$repository" >> "$GITHUB_ENV"
-          printf 'GIONG_PLUGIN_IMAGE_TAG=%s\n' "$GITHUB_REF_NAME" >> "$GITHUB_ENV"
+          if [ "${{ github.ref_type }}" = "tag" ]; then
+            repository=$(printf '%s' "$GITHUB_REPOSITORY" | tr '[:upper:]' '[:lower:]')
+            printf 'GIONG_PLUGIN_IMAGE_PREFIX=%s/%s/plugins/\n' "$REGISTRY" "$repository" >> "$GITHUB_ENV"
+            printf 'GIONG_PLUGIN_IMAGE_TAG=%s\n' "$GITHUB_REF_NAME" >> "$GITHUB_ENV"
+            printf 'targets<<EOF\ngiong\nplugins\nEOF\n' >> "$GITHUB_OUTPUT"
+          else
+            printf 'targets=giong\n' >> "$GITHUB_OUTPUT"
+          fi
 
-      - name: Build and push application and plugin images
+      - name: Build and push images
         uses: docker/bake-action@v7
         with:
           source: .
           files: |
             ./docker-bake.hcl
             ${{ steps.meta.outputs.bake-file }}
-          targets: |
-            giong
-            plugins
+          targets: ${{ steps.targets.outputs.targets }}
           push: true
           set: |
             *.cache-from=type=gha,scope=giong

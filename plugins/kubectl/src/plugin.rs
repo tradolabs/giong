@@ -111,7 +111,7 @@ struct DeploymentConfiguration {
     source: String,
     relative_chart: String,
     release: String,
-    namespace: String,
+    namespace: Option<String>,
     values_file: String,
     env: BTreeMap<String, String>,
 }
@@ -140,7 +140,7 @@ impl DeploymentConfiguration {
             source: properties.source,
             relative_chart,
             release: properties.release.unwrap_or_else(|| "release".into()),
-            namespace: properties.namespace.unwrap_or_else(|| "default".into()),
+            namespace: properties.namespace,
             values_file: properties.values_file.unwrap_or_default(),
             env,
         })
@@ -205,10 +205,13 @@ impl DeploymentConfiguration {
         helm.arg("template")
             .arg(&self.release)
             .arg(&chart)
-            .args(["--namespace", &self.namespace, "--no-hooks"])
+            .arg("--no-hooks")
             .envs(&self.env)
             .stdin(Stdio::null())
             .stdout(output);
+        if let Some(namespace) = &self.namespace {
+            helm.args(["--namespace", namespace]);
+        }
         if !self.values_file.is_empty() {
             let values = chart.join(&self.values_file).canonicalize()?;
             ensure!(values.starts_with(&copy), "Values file must stay within the repository");
@@ -217,12 +220,12 @@ impl DeploymentConfiguration {
         ensure!(helm.status()?.success(), "Helm template failed");
 
         ctx.log_info("Applying manifests with kubectl...")?;
-        run_logged(
-            Command::new("kubectl")
-                .args(["--namespace", &self.namespace, "apply", "-f"])
-                .arg(manifests)
-                .envs(&self.env),
-        )
+        let mut kubectl = Command::new("kubectl");
+        if let Some(namespace) = &self.namespace {
+            kubectl.args(["--namespace", namespace]);
+        }
+        kubectl.args(["apply", "-f"]).arg(manifests).envs(&self.env);
+        run_logged(&mut kubectl)
     }
 }
 
