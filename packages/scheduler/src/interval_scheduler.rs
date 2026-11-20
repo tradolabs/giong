@@ -9,7 +9,12 @@ use uuid::Uuid;
 
 pub struct IntervalScheduler {
     scheduler: JobScheduler,
-    jobs: Mutex<HashMap<Uuid, Uuid>>,
+    jobs: Mutex<HashMap<Uuid, ScheduledJob>>,
+}
+
+struct ScheduledJob {
+    id: Uuid,
+    seconds: u64,
 }
 
 impl IntervalScheduler {
@@ -24,7 +29,42 @@ impl IntervalScheduler {
         F: Fn() -> Fut + Send + Sync + 'static,
         Fut: Future<Output = ()> + Send + 'static,
     {
-        self.unschedule(key).await?;
+        self.schedule_job(key, seconds, callback, false).await
+    }
+
+    /// Register a job unless one with the same key and interval is already scheduled.
+    pub async fn ensure_scheduled<F, Fut>(
+        &self,
+        key: Uuid,
+        seconds: u64,
+        callback: F,
+    ) -> Result<(), Error>
+    where
+        F: Fn() -> Fut + Send + Sync + 'static,
+        Fut: Future<Output = ()> + Send + 'static,
+    {
+        self.schedule_job(key, seconds, callback, true).await
+    }
+
+    async fn schedule_job<F, Fut>(
+        &self,
+        key: Uuid,
+        seconds: u64,
+        callback: F,
+        keep_existing: bool,
+    ) -> Result<(), Error>
+    where
+        F: Fn() -> Fut + Send + Sync + 'static,
+        Fut: Future<Output = ()> + Send + 'static,
+    {
+        let mut jobs = self.jobs.lock().await;
+        if let Some(current) = jobs.get(&key) {
+            if keep_existing && current.seconds == seconds {
+                return Ok(());
+            }
+            self.scheduler.remove(&current.id).await?;
+            jobs.remove(&key);
+        }
         let callback = Arc::new(callback);
         let job = Job::new_repeated_async(Duration::from_secs(seconds), move |_, _| {
             let callback = Arc::clone(&callback);
@@ -33,13 +73,15 @@ impl IntervalScheduler {
             })
         })?;
         let job_id = self.scheduler.add(job).await?;
-        self.jobs.lock().await.insert(key, job_id);
+        jobs.insert(key, ScheduledJob { id: job_id, seconds });
         Ok(())
     }
 
     pub async fn unschedule(&self, key: Uuid) -> Result<(), Error> {
-        if let Some(job_id) = self.jobs.lock().await.remove(&key) {
-            self.scheduler.remove(&job_id).await?;
+        let mut jobs = self.jobs.lock().await;
+        if let Some(job) = jobs.get(&key) {
+            self.scheduler.remove(&job.id).await?;
+            jobs.remove(&key);
         }
         Ok(())
     }

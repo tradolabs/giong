@@ -9,15 +9,21 @@ use giong_database::entities::node_entity::NodeEntity;
 use giong_database::repositories::types::condition::Condition;
 use giong_di::Injectable;
 use giong_kv::kv::Kv;
-use giong_node::types::node::Trigger;
+use giong_node::host::{Flow, FlowSyncResult, NodeOutput, NodeScope, Trigger};
+use giong_node::runtime::validate_plugin_kind;
+use giong_node::storage::Storage;
+use giong_node::types::node::OUTPUT_KEY;
 use giong_scheduler::IntervalScheduler;
 use std::borrow::Cow;
 use std::cmp::Reverse;
-use std::collections::HashSet;
+use std::collections::{BTreeMap, HashSet};
+use std::fs::{self, File};
+use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 use uuid::Uuid;
 
 static EXECUTIONS: Mutex<()> = Mutex::new(());
+static FLOW_IMPORTS: tokio::sync::Mutex<()> = tokio::sync::Mutex::const_new(());
 
 #[derive(Clone, Injectable)]
 pub struct NodeService {
@@ -29,11 +35,40 @@ pub struct NodeService {
 }
 
 impl NodeService {
-    pub(crate) async fn get_kinds(&self) -> Result<Vec<String>, Exception> {
-        tokio::task::spawn_blocking(giong_node::runtime::kinds)
-            .await
-            .map_err(Exception::unexpected)?
-            .map_err(Exception::from)
+    pub(crate) fn node_logs_dir(node_id: Uuid) -> PathBuf {
+        Config::data_dir().join("logs").join("nodes").join(node_id.to_string())
+    }
+
+    pub(crate) fn get_log_path(node_id: Uuid, execution_id: Uuid) -> PathBuf {
+        Self::node_logs_dir(node_id).join(format!("{execution_id}.log"))
+    }
+
+    pub(crate) fn open_log(node_id: Uuid, execution_id: Uuid) -> std::io::Result<File> {
+        fs::create_dir_all(Self::node_logs_dir(node_id))?;
+        File::options().create(true).append(true).open(Self::get_log_path(node_id, execution_id))
+    }
+
+    pub(crate) fn storage(&self, node_id: Uuid) -> Storage {
+        Storage::new(self.kv.namespace(&format!("nodes/{node_id}")))
+    }
+
+    pub(crate) fn get_output(&self, node_id: Uuid) -> Result<Option<serde_json::Value>, Exception> {
+        let bytes = self.storage(node_id).get(OUTPUT_KEY)?;
+        Ok(bytes.map(|bytes| serde_json::from_slice(&bytes)).transpose()?)
+    }
+
+    pub(crate) async fn get_flow_outputs(
+        &self,
+        flow_id: Uuid,
+    ) -> Result<BTreeMap<String, NodeOutput>, Exception> {
+        let nodes = self.database.nodes.find(Condition::new().eq("flow_id", flow_id)).await?;
+        let mut outputs = BTreeMap::new();
+        for node in nodes {
+            if let Some(output) = self.get_output(node.id)? {
+                outputs.insert(node.name, NodeOutput { node_id: node.id, value: output });
+            }
+        }
+        Ok(outputs)
     }
 
     pub(crate) async fn enqueue_execution(
@@ -78,9 +113,8 @@ impl NodeService {
         let mut executions = self.get_executions(node_id)?;
         executions.push(execution);
         executions.sort_by_key(|execution| Reverse(execution.id));
-        let logs = Config::data_dir().join("logs/nodes").join(node_id.to_string());
         for old in executions.drain(executions.len().min(10)..) {
-            match std::fs::remove_file(logs.join(format!("{}.log", old.id))) {
+            match fs::remove_file(Self::get_log_path(old.node_id, old.id)) {
                 Ok(()) => {}
                 Err(error) if error.kind() == std::io::ErrorKind::NotFound => {}
                 Err(error) => return Err(error.into()),
@@ -177,7 +211,7 @@ impl NodeService {
 
         let service = self.clone();
         self.scheduler
-            .schedule(node_id, seconds, move || {
+            .ensure_scheduled(node_id, seconds, move || {
                 let service = service.clone();
                 async move {
                     if let Err(error) = service.enqueue_execution(flow_id, node_id).await {
@@ -202,6 +236,23 @@ impl NodeService {
         Ok(())
     }
 
+    pub(crate) async fn synchronize_flow(
+        &self,
+        scope: &NodeScope,
+        definitions: Vec<Flow>,
+    ) -> Result<FlowSyncResult, Exception> {
+        let _guard = FLOW_IMPORTS.lock().await;
+        let report = self.flow_service.sync_flows(scope, definitions).await?;
+        for flow in &report.flows {
+            let flow_id = Uuid::parse_str(&flow.id).map_err(Exception::unexpected)?;
+            for node in self.database.nodes.find(Condition::new().eq("flow_id", flow_id)).await? {
+                let triggers: Vec<Trigger> = serde_json::from_value(node.triggers)?;
+                self.sync_interval_trigger(flow_id, node.id, &triggers).await?;
+            }
+        }
+        Ok(report)
+    }
+
     pub(crate) async fn validate_flow_nodes(
         &self,
         flow_id: Uuid,
@@ -224,6 +275,15 @@ impl NodeService {
         }
         nodes.push((name, kind, properties, Cow::Borrowed(triggers)));
 
+        Self::validate_definitions(nodes.iter().map(|(name, kind, properties, triggers)| {
+            (*name, *kind, *properties, triggers.as_ref())
+        }))
+    }
+
+    pub(super) fn validate_definitions<'a>(
+        nodes: impl IntoIterator<Item = (&'a str, &'a str, &'a serde_json::Value, &'a [Trigger])>,
+    ) -> Result<(), Exception> {
+        let nodes: Vec<_> = nodes.into_iter().collect();
         let mut names = HashSet::with_capacity(nodes.len());
         for (node_name, node_kind, node_properties, _) in &nodes {
             if node_name.trim().is_empty()
@@ -235,7 +295,7 @@ impl NodeService {
                     "Nodes need unique names and object properties".into(),
                 ));
             }
-            giong_node::runtime::path(node_kind)
+            validate_plugin_kind(node_kind)
                 .map_err(|error| Exception::BadRequest(error.to_string()))?;
         }
 
@@ -261,7 +321,7 @@ impl NodeService {
 
         // A topological order validates event dependencies and prevents trigger loops.
         let mut remaining: Vec<_> =
-            nodes.iter().map(|(name, _, _, triggers)| (*name, triggers.as_ref())).collect();
+            nodes.iter().map(|(name, _, _, triggers)| (*name, *triggers)).collect();
         let mut done = HashSet::with_capacity(remaining.len());
         while !remaining.is_empty() {
             let Some(index) = remaining.iter().position(|(_, node_triggers)| {

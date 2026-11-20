@@ -29,29 +29,28 @@ impl UseCase for DeleteFlowUseCase {
             .find_one(Condition::new().eq("id", id))
             .await?
             .ok_or(ResourceException::NotFound(Resource::Flow))?;
-        let vault_id = flow.vault_id;
-        for other in self.database.flows.find(Condition::new()).await? {
-            if other.id == id {
-                continue;
-            }
-            let inherited: Vec<Uuid> = serde_json::from_value(other.inherited_vault_ids)?;
-            if other.vault_id == vault_id || inherited.contains(&vault_id) {
-                return Err(ResourceException::InUse(Resource::Vault).into());
-            }
-        }
         self.flow_service.populate_nodes(std::slice::from_mut(&mut flow)).await?;
         let nodes = flow.nodes;
-        self.database
-            .transaction(async || {
-                self.database.flows.delete_one(Condition::new().eq("id", id)).await?;
-                self.database.vaults.delete_one(Condition::new().eq("id", vault_id)).await?;
-                Ok(())
-            })
-            .await?;
+        self.database.flows.delete_one(Condition::new().eq("id", id)).await?;
         for node in &nodes {
             self.node_service.unschedule_node(node.id).await?;
         }
         self.flow_service.invalidate_graph(id).await;
+        let cleanup_workspace = async {
+            let images: Vec<_> = self
+                .database
+                .plugins
+                .find(Condition::new())
+                .await?
+                .into_iter()
+                .map(|plugin| plugin.image_id)
+                .collect();
+            giong_node::runtime::remove_flow_workspace(id, &images).await?;
+            Ok::<(), Exception>(())
+        };
+        if let Err(error) = cleanup_workspace.await {
+            eprintln!("Could not remove flow workspace {id}: {error}");
+        }
         let kv = self.kv.clone();
         let cleanup = tokio::task::spawn_blocking(move || -> anyhow::Result<()> {
             let scope = id.to_string();

@@ -5,15 +5,14 @@ edition = "2024"
 
 [features]
 default = ["host"]
-host = ["dep:tempfile", "dep:giong-kv", "dep:giong-git", "dep:anyhow", "dep:wasmtime", "dep:wasmtime-wasi"]
+host = ["dep:giong-docker", "dep:giong-kv", "dep:uuid", "dep:tokio"]
 
 [dependencies]
-tempfile = { version = "3", optional = true }
+giong-docker = { path = "../docker", optional = true }
 giong-kv = { path = "../kv", optional = true }
 serde.workspace = true
 
-giong-git = { path = "../git", optional = true }
-anyhow = { workspace = true, optional = true }
+anyhow.workspace = true
 serde_json.workspace = true
-wasmtime = { version = "50", default-features = false, features = ["cranelift", "runtime", "std", "component-model"], optional = true }
-wasmtime-wasi = { version = "50", default-features = false, features = ["p2"], optional = true }
+uuid = { workspace = true, optional = true }
+tokio = { workspace = true, features = ["process", "io-util", "sync", "time"], optional = true }

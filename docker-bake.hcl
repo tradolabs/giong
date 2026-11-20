@@ -1,9 +1,21 @@
 group "default" {
-  targets = ["giong"]
+  targets = ["giong", "plugin-repository", "plugin-flow", "plugin-kubectl"]
 }
 
 group "apps" {
   targets = ["cli", "controller", "console"]
+}
+
+group "plugins" {
+  targets = ["plugin-repository", "plugin-flow", "plugin-kubectl"]
+}
+
+variable "GIONG_PLUGIN_IMAGE_PREFIX" {
+  default = "giong-plugin-"
+}
+
+variable "GIONG_PLUGIN_IMAGE_TAG" {
+  default = "latest"
 }
 
 target "docker-metadata-action" {
@@ -58,4 +70,22 @@ target "giong" {
     controller-builder = "target:controller-builder"
     console-builder = "target:console-builder"
   }
+}
+
+target "plugin-repository" {
+  inherits = ["_common"]
+  dockerfile = "plugins/repository/Dockerfile"
+  tags = ["${GIONG_PLUGIN_IMAGE_PREFIX}repository:${GIONG_PLUGIN_IMAGE_TAG}"]
+}
+
+target "plugin-flow" {
+  inherits = ["_common"]
+  dockerfile = "plugins/flow/Dockerfile"
+  tags = ["${GIONG_PLUGIN_IMAGE_PREFIX}flow:${GIONG_PLUGIN_IMAGE_TAG}"]
+}
+
+target "plugin-kubectl" {
+  inherits = ["_common"]
+  dockerfile = "plugins/kubectl/Dockerfile"
+  tags = ["${GIONG_PLUGIN_IMAGE_PREFIX}kubectl:${GIONG_PLUGIN_IMAGE_TAG}"]
 }

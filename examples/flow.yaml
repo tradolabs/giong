@@ -1,6 +1,8 @@
 flow:
   name: personal
-  inherited_vault_ids: []
+  vaults:
+    - git-credentials
+    - kubernetes
   nodes:
     - name: repository
       type: repository
@@ -9,12 +11,13 @@ flow:
         token:
           secret:
             key: git_token
+            vault: git-credentials
       triggers:
         - type: interval
           seconds: 60
 
     - name: deploy
-      type: runners/kubectl
+      type: kubectl
       properties:
         source: repository
         path: deployments/trado
@@ -23,8 +26,7 @@ flow:
         kubeconfig:
           secret:
             key: kubeconfig
-            # Omit vault for the flow vault; otherwise use an attached vault's name.
-            # vault: kubernetes
+            vault: kubernetes
       triggers:
         - type: event
           node: repository

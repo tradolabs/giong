@@ -6,7 +6,7 @@ use giong_database::Database;
 use giong_database::entities::node_entity::NodeEntity;
 use giong_database::repositories::types::{condition::Condition, document::Document};
 use giong_di::Injectable;
-use giong_node::types::node::Trigger;
+use giong_node::host::Trigger;
 use std::sync::Arc;
 use uuid::Uuid;
 

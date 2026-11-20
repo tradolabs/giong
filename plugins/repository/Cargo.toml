@@ -1,17 +1,18 @@
 [package]
-name = "giong-repository-source"
+name = "giong-plugins-repository"
 version.workspace = true
 edition = "2024"
 
 [lib]
-crate-type = ["cdylib", "rlib"]
+path = "src/types.rs"
 
-[features]
-default = ["component"]
-component = ["dep:wit-bindgen"]
+[[bin]]
+name = "giong-plugins-repository"
+path = "src/lib.rs"
 
 [dependencies]
-serde.workspace = true
+anyhow.workspace = true
+giong-git = { path = "../../packages/git" }
 giong-node = { path = "../../packages/node", default-features = false }
-wit-bindgen = { version = "0.63.0", optional = true }
+serde.workspace = true
 serde_json.workspace = true

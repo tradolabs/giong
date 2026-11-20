@@ -10,6 +10,7 @@ giong-kv = { path = "../kv" }
 giong-node = { path = "../node" }
 giong-di = { path = "../di" }
 giong-database = { path = "../database" }
+giong-docker = { path = "../docker" }
 giong-publisher = { path = "../publisher" }
 giong-scheduler = { path = "../scheduler" }
 tokio = { workspace = true, features = ["fs", "sync"] }

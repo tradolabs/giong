@@ -45,13 +45,13 @@ export function Sidebar({ expanded, active, onToggle, onSignOut, onNavigate }: P
           </svg>
           {expanded && <span>Flow</span>}
         </a>
-        <a href="#/settings" onClick={onNavigate} aria-current={active === "setting" ? "page" : undefined} aria-label="Setting" title="Setting">
+        <a href="#/settings" onClick={onNavigate} aria-current={active === "setting" ? "page" : undefined} aria-label="Settings" title="Settings">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" aria-hidden="true">
             <path d="M4 7h16M4 17h16" />
             <circle cx="9" cy="7" r="3" fill="var(--bg-surface)" />
             <circle cx="15" cy="17" r="3" fill="var(--bg-surface)" />
           </svg>
-          {expanded && <span>Setting</span>}
+          {expanded && <span>Settings</span>}
         </a>
       </nav>
       <button type="button" className="sidebar-sign-out" aria-label="Sign out" title="Sign out" onClick={onSignOut}>

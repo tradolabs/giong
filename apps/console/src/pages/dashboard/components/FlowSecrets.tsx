@@ -3,7 +3,6 @@ import { getApiErrorMessage } from "../../../api/errors";
 import { fetchVaults, updateFlow } from "../../../api/requests";
 import type { Vault } from "../../../types/secret";
 import type { Flow } from "../../../types/flow";
-import { SecretEditor } from "./SecretEditor";
 import { InheritedVaultSecrets } from "./InheritedVaultSecrets";
 
 interface Props {
@@ -14,8 +13,8 @@ interface Props {
 
 export function FlowSecrets({ flow, onSignOut, onSaved }: Props) {
   const [vaults, setVaults] = useState<Vault[]>([]);
-  const [inherited, setInherited] = useState<string[]>(
-    flow.inherited_vault_ids,
+  const [selectedVaultIds, setSelectedVaultIds] = useState<string[]>(
+    flow.vault_ids,
   );
   const [loading, setLoading] = useState(true);
   const [pending, setPending] = useState(false);
@@ -45,11 +44,11 @@ export function FlowSecrets({ flow, onSignOut, onSaved }: Props) {
     setError(null);
     setMessage(null);
     try {
-      onSaved(await updateFlow(flow.id, { name: flow.name, inherited_vault_ids: inherited }));
+      onSaved(await updateFlow(flow.id, { name: flow.name, vault_ids: selectedVaultIds }));
       setMessage("Saved.");
     } catch (err) {
       setError(
-        getApiErrorMessage(err, onSignOut, "Could not save inherited vaults"),
+        getApiErrorMessage(err, onSignOut, "Could not save attached vaults"),
       );
     } finally {
       setPending(false);
@@ -58,40 +57,31 @@ export function FlowSecrets({ flow, onSignOut, onSaved }: Props) {
 
   return (
     <div className="ui-dialog-content flow-settings-form">
-      {flow.vault_id && (
-        <SecretEditor
-          key={flow.vault_id}
-          ownerId={flow.vault_id}
-          onSignOut={onSignOut}
-        />
-      )}
-      <h3>Inherited vaults</h3>
-      <p className="ui-hint">Attach shared vaults to use their secrets. Each reference must specify its vault; keys without a vault use only the flow vault.</p>
+      <h3>Attached vaults</h3>
+      <p className="ui-hint">Attach vaults to use their secrets. Specify the vault name in each secret reference.</p>
       {loading && <p role="status">Loading vaults…</p>}
       <div className="secret-set-choices">
-        {vaults
-          .filter(vault => vault.id !== flow.vault_id)
-          .map(vault => (
-            <label key={vault.id} className="secret-set-choice">
-              <input
-                type="checkbox"
-                checked={inherited.includes(vault.id)}
-                disabled={loading || pending}
-                onChange={(event) => {
-                  setMessage(null);
-                  setError(null);
-                  setInherited(current =>
-                    event.target.checked
-                      ? [...current, vault.id]
-                      : current.filter(id => id !== vault.id),
-                  );
-                }}
-              />
-              <span>
-                {vault.name}
-              </span>
-            </label>
-          ))}
+        {vaults.map(vault => (
+          <label key={vault.id} className="secret-set-choice">
+            <input
+              type="checkbox"
+              checked={selectedVaultIds.includes(vault.id)}
+              disabled={loading || pending}
+              onChange={(event) => {
+                setMessage(null);
+                setError(null);
+                setSelectedVaultIds(current =>
+                  event.target.checked
+                    ? [...current, vault.id]
+                    : current.filter(id => id !== vault.id),
+                );
+              }}
+            />
+            <span>
+              {vault.name}
+            </span>
+          </label>
+        ))}
       </div>
       <button
         type="button"
@@ -101,9 +91,9 @@ export function FlowSecrets({ flow, onSignOut, onSaved }: Props) {
           void save();
         }}
       >
-        {pending ? "Saving…" : "Save inherited vaults"}
+        {pending ? "Saving…" : "Save attached vaults"}
       </button>
-      {!loading && inherited.map(vaultId => (
+      {!loading && selectedVaultIds.map(vaultId => (
         <InheritedVaultSecrets
           key={vaultId}
           vaultId={vaultId}

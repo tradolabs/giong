@@ -54,7 +54,7 @@ export function FlowSettingsDialog({
     try {
       const saved = await updateFlow(flow.id, {
         name: name.trim(),
-        inherited_vault_ids: flow.inherited_vault_ids,
+        vault_ids: flow.vault_ids,
       });
       onSaved(saved);
       setName(saved.name);
@@ -105,7 +105,7 @@ export function FlowSettingsDialog({
               </label>
               <dl className="flow-general-overview">
                 <div><dt>Nodes</dt><dd>{flow.nodes.length}</dd></div>
-                <div><dt>Inherited vaults</dt><dd>{flow.inherited_vault_ids.length}</dd></div>
+                <div><dt>Attached vaults</dt><dd>{flow.vault_ids.length}</dd></div>
               </dl>
               {error && !confirmDelete && <p role="alert" className="ui-error">{error}</p>}
               {message && <p role="status" className="ui-success">{message}</p>}

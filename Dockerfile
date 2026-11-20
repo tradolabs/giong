@@ -5,13 +5,10 @@ FROM alpine:3.23
 RUN apk add --no-cache ca-certificates libgcc libssl3 nginx zlib \
     && mkdir -p /data/.giong /run/nginx
 COPY --from=docker-cli /usr/local/bin/docker /usr/local/bin/docker
-COPY --from=docker-cli /usr/local/libexec/docker/cli-plugins/docker-buildx /usr/local/libexec/docker/cli-plugins/docker-buildx
 COPY --from=cli-builder /out/giong /usr/local/bin/giong
 COPY --from=controller-builder /out/giong-controller /usr/local/bin/giong-controller
 COPY --from=console-builder /out /usr/share/nginx/html
 COPY nginx.conf /etc/nginx/nginx.conf
-COPY --from=controller-builder /out/runners /usr/local/lib/giong/runners
-ENV GIONG_RUNNERS_DIR=/usr/local/lib/giong/runners
 ENV HOME=/data
 WORKDIR /data
 VOLUME ["/data/.giong"]

@@ -1,5 +1,6 @@
 use crate::error::Error;
 use crate::repositories::node::NodeRepository;
+use crate::repositories::plugin::PluginRepository;
 use crate::repositories::{secret::SecretRepository, vault::VaultRepository};
 use std::{ops::AsyncFnOnce, sync::Arc};
 
@@ -10,6 +11,7 @@ use crate::{
 
 pub struct Database {
     pub nodes: Box<dyn NodeRepository>,
+    pub plugins: Box<dyn PluginRepository>,
     pub vaults: Box<dyn VaultRepository>,
     pub secrets: Box<dyn SecretRepository>,
     pub flows: Box<dyn FlowRepository>,

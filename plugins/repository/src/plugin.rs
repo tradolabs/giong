@@ -1,74 +1,58 @@
-wit_bindgen::generate!({ path: "../../packages/node/wit", world: "node" });
-
-use self::giong::node::{events, git, secrets, storage};
-use crate::types::{RepositoryOutput, RepositoryProperties};
+use anyhow::{Context as _, Result};
+use giong_node::sdk::{Context, Plugin};
 use giong_node::types::metadata::Metadata;
-use giong_node::types::node::OUTPUT_KEY;
-use giong_node::types::tools::git::{CheckoutInputs, CheckoutOutput};
-use giong_node::types::tools::secrets::SecretValue;
+use giong_plugins_repository::{RepositoryInput, RepositoryOutput};
+use std::fs;
 
 const COMMIT_SHA_KEY: &str = "repository:commit-sha";
+const REPOSITORY_DIR: &str = "repository";
 
-struct Repository;
+pub(crate) struct Repository;
 
-impl Guest for Repository {
-    fn metadata() -> Result<String, String> {
-        serde_json::to_string(&Metadata {
+impl Plugin for Repository {
+    type Input = RepositoryInput;
+
+    fn metadata() -> Metadata {
+        Metadata {
             kind: "repository".into(),
             name: "Repository".into(),
             version: env!("CARGO_PKG_VERSION").into(),
-            description: "Check out a Git revision into a host-provided workspace".into(),
-        })
-        .map_err(|error| error.to_string())
+            description: "Check out a Git revision into the node workspace".into(),
+        }
     }
 
-    fn execute(args: String) -> Result<(), String> {
-        let properties: RepositoryProperties =
-            serde_json::from_str(&args).map_err(|_| "Invalid checkout properties".to_string())?;
-        println!("Preparing repository checkout...");
+    fn execute(
+        ctx: &mut Context,
+        RepositoryInput { repo_url, revision, token }: RepositoryInput,
+    ) -> Result<()> {
+        let workspace = ctx.open_workspace()?;
+        let token = token.map(|token| ctx.resolve_secret(token)).transpose()?;
+        let token = token.as_deref();
 
-        let output = checkout(properties)?;
-        let previous = storage::get(COMMIT_SHA_KEY)?;
-        save_output(output.repository_path)?;
-        publish_change(&output.commit_sha, previous.as_deref())
+        ctx.log_info("Resolving repository revision...")?;
+        let revision = giong_git::resolve_revision(&repo_url, &revision, token)
+            .context("Could not resolve repository revision")?;
+        let repository = workspace.join(REPOSITORY_DIR);
+        let repository_path = repository.to_str().context("Repository path is not UTF-8")?;
+        if repository.exists() {
+            fs::remove_dir_all(&repository)?;
+        }
+
+        ctx.log_info(format!("Cloning repository at {revision}..."))?;
+        giong_git::checkout(&repo_url, &repository, &revision, token)
+            .inspect_err(|_| {
+                let _ = fs::remove_dir_all(&repository);
+            })
+            .context("Could not check out repository")?;
+
+        let previous = ctx.get_storage(COMMIT_SHA_KEY)?;
+        ctx.save_output(&RepositoryOutput { repository_path: repository_path.into() })?;
+        if previous.as_deref() == Some(revision.as_bytes()) {
+            ctx.log_info("No new commits detected.")?;
+        } else {
+            ctx.log_info("New commit detected.")?;
+            ctx.put_storage(COMMIT_SHA_KEY, revision.into_bytes())?;
+        }
+        ctx.emit_changed()
     }
 }
-
-fn checkout(properties: RepositoryProperties) -> Result<CheckoutOutput, String> {
-    let token = properties
-        .token
-        .map(|token| match token {
-            SecretValue::Literal(value) => Ok(value),
-            SecretValue::Reference { secret } => match secret.vault() {
-                Some(vault) => secrets::get_from_vault(vault, secret.key()),
-                None => secrets::get(secret.key()),
-            },
-        })
-        .transpose()?;
-    let request =
-        CheckoutInputs { repo_url: properties.repo_url, revision: properties.revision, token };
-    let request = serde_json::to_string(&request).map_err(|_| "Invalid checkout inputs")?;
-    let output = git::checkout(&request)?;
-    serde_json::from_str(&output).map_err(|_| "Invalid checkout output".into())
-}
-
-fn save_output(repository_path: String) -> Result<(), String> {
-    let output = RepositoryOutput { repository_path };
-    let bytes = serde_json::to_vec(&output).map_err(|_| "Could not encode repository output")?;
-    storage::put(OUTPUT_KEY, &bytes)?;
-    println!("Repository output saved.");
-    Ok(())
-}
-
-fn publish_change(commit_sha: &str, previous: Option<&[u8]>) -> Result<(), String> {
-    if previous == Some(commit_sha.as_bytes()) {
-        println!("No new commits detected.");
-    } else {
-        println!("New commit detected.");
-        storage::put(COMMIT_SHA_KEY, commit_sha.as_bytes())?;
-    }
-    events::emit("changed")?;
-    Ok(())
-}
-
-export!(Repository);

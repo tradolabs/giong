@@ -44,14 +44,22 @@ jobs:
             type=semver,pattern={{major}}.{{minor}}
             type=raw,value=latest
 
-      - name: Build and push Docker image
+      - name: Set plugin image references
+        run: |
+          repository=$(printf '%s' "$GITHUB_REPOSITORY" | tr '[:upper:]' '[:lower:]')
+          printf 'GIONG_PLUGIN_IMAGE_PREFIX=%s/%s-plugin-\n' "$REGISTRY" "$repository" >> "$GITHUB_ENV"
+          printf 'GIONG_PLUGIN_IMAGE_TAG=%s\n' "$GITHUB_SHA" >> "$GITHUB_ENV"
+
+      - name: Build and push application and plugin images
         uses: docker/bake-action@v7
         with:
           source: .
           files: |
             ./docker-bake.hcl
             ${{ steps.meta.outputs.bake-file }}
-          targets: giong
+          targets: |
+            giong
+            plugins
           push: true
           set: |
             *.cache-from=type=gha,scope=giong

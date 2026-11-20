@@ -9,8 +9,7 @@ pub struct Model {
     pub id: Uuid,
     #[sea_orm(unique)]
     pub name: String,
-    pub vault_id: Uuid,
-    pub inherited_vault_ids: serde_json::Value,
+    pub vault_ids: serde_json::Value,
     pub created_at: String,
     pub updated_at: String,
 }
@@ -25,8 +24,7 @@ impl From<Model> for crate::entities::flow_entity::FlowEntity {
         Self {
             id: model.id,
             name: model.name,
-            vault_id: model.vault_id,
-            inherited_vault_ids: model.inherited_vault_ids,
+            vault_ids: model.vault_ids,
             nodes: Vec::new(),
             created_at: model.created_at,
             updated_at: model.updated_at,

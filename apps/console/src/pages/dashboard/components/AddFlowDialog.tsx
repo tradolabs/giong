@@ -15,7 +15,7 @@ interface Props {
 export function AddFlowDialog({ onClose, onSignOut, onCreated }: Props) {
   const [name, setName] = useState("");
   const [vaults, setVaults] = useState<Vault[]>([]);
-  const [inherited, setInherited] = useState<string[]>([]);
+  const [selectedVaultIds, setSelectedVaultIds] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -38,7 +38,7 @@ export function AddFlowDialog({ onClose, onSignOut, onCreated }: Props) {
     setPending(true);
     setError(null);
     try {
-      const saved = await createFlow({ name: name.trim(), inherited_vault_ids: inherited });
+      const saved = await createFlow({ name: name.trim(), vault_ids: selectedVaultIds });
       onClose();
       onCreated(saved);
     } catch (err) {
@@ -61,14 +61,14 @@ export function AddFlowDialog({ onClose, onSignOut, onCreated }: Props) {
         {loading && <p role="status">Loading vaults…</p>}
         {vaults.length > 0 && (
           <fieldset className="create-flow-vaults" disabled={pending}>
-            <legend>Inherited vaults</legend>
+            <legend>Attached vaults</legend>
             <div className="secret-set-choices">
               {vaults.map(vault => (
                 <label key={vault.id} className="secret-set-choice">
                   <input
                     type="checkbox"
-                    checked={inherited.includes(vault.id)}
-                    onChange={event => setInherited(current => event.target.checked ? [...current, vault.id] : current.filter(id => id !== vault.id))}
+                    checked={selectedVaultIds.includes(vault.id)}
+                    onChange={event => setSelectedVaultIds(current => event.target.checked ? [...current, vault.id] : current.filter(id => id !== vault.id))}
                   />
                   <span>{vault.name}</span>
                 </label>

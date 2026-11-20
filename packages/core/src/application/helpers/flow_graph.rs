@@ -1,6 +1,6 @@
 use crate::application::exceptions::base::Exception;
 use giong_database::entities::node_entity::NodeEntity;
-use giong_node::types::node::Trigger;
+use giong_node::host::Trigger;
 use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::sync::RwLock;
