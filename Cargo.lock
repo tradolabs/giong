@@ -1405,6 +1405,7 @@ dependencies = [
  "getrandom 0.4.3",
  "giong-database",
  "giong-di",
+ "giong-docker",
  "giong-kv",
  "giong-node",
  "giong-publisher",
@@ -1451,6 +1452,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "giong-docker"
+version = "0.1.0"
+dependencies = [
+ "reqwest",
+ "serde",
+ "serde_json",
+ "thiserror",
+]
+
+[[package]]
 name = "giong-git"
 version = "0.1.0"
 dependencies = [
@@ -1471,6 +1482,7 @@ name = "giong-node"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "giong-docker",
  "giong-kv",
  "serde",
  "serde_json",
