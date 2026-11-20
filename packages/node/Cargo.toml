@@ -5,9 +5,10 @@ edition = "2024"
 
 [features]
 default = ["host"]
-host = ["dep:giong-kv", "dep:uuid", "dep:tokio"]
+host = ["dep:giong-docker", "dep:giong-kv", "dep:uuid", "dep:tokio"]
 
 [dependencies]
+giong-docker = { path = "../docker", optional = true }
 giong-kv = { path = "../kv", optional = true }
 serde.workspace = true
 

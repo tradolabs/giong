@@ -1,12 +1,12 @@
 use crate::host::{Flow, FlowSyncResult};
 use crate::protocol::{
-    Call, HostMessage, MAX_FRAME_BYTES, Operation, PluginMessage, VERSION, decode_frame,
+    Call, HostMessage, LogLevel, MAX_FRAME_BYTES, Operation, PluginMessage, VERSION, decode_frame,
     encode_frame,
 };
 pub use crate::types::metadata::Metadata;
 use crate::types::node::OUTPUT_KEY;
 use crate::types::secrets::SecretValue;
-use anyhow::{Context, Error, Result, anyhow, bail, ensure};
+use anyhow::{Context as _, Error, Result, anyhow, bail, ensure};
 use serde::{Serialize, de::DeserializeOwned};
 use serde_json::Value;
 use std::io::{self, BufRead, Read, Write};
@@ -15,21 +15,22 @@ use std::process::ExitCode;
 
 pub(crate) const WORKSPACE_ENV: &str = "GIONG_NODE_WORKSPACE";
 
-/// Implement a plugin executable. Write diagnostic logs to stderr.
+/// Implement a plugin executable. Use `ctx.log` to write execution logs.
 pub trait Plugin {
     type Input: DeserializeOwned;
 
     fn metadata() -> Metadata;
-    fn execute(client: &mut Client<'_>, input: Self::Input) -> Result<()>;
+    fn execute(ctx: &mut Context, input: Self::Input) -> Result<()>;
 }
 
 /// Run one plugin invocation using JSON Lines on stdin and stdout.
 pub fn run<P: Plugin>() -> ExitCode {
-    let stdin = io::stdin();
-    let stdout = io::stdout();
-    let mut reader = stdin.lock();
-    let mut writer = stdout.lock();
-    match serve::<P>(&mut reader, &mut writer) {
+    let mut ctx = Context {
+        log: Logger { writer: io::stdout().lock() },
+        reader: io::stdin().lock(),
+        next_id: 1,
+    };
+    match serve::<P>(&mut ctx) {
         Ok(()) => ExitCode::SUCCESS,
         Err(error) => {
             eprintln!("{error}");
@@ -38,9 +39,9 @@ pub fn run<P: Plugin>() -> ExitCode {
     }
 }
 
-fn serve<P: Plugin>(reader: &mut dyn BufRead, writer: &mut dyn Write) -> Result<()> {
-    send(writer, PluginMessage::Ready { version: VERSION })?;
-    let HostMessage::Start { version, operation } = receive(reader)? else {
+fn serve<P: Plugin>(ctx: &mut Context) -> Result<()> {
+    ctx.log.send(PluginMessage::Ready { version: VERSION })?;
+    let HostMessage::Start { version, operation } = ctx.receive()? else {
         bail!("Expected a plugin start message");
     };
     ensure!(version == VERSION, "Unsupported plugin protocol version {version}");
@@ -50,44 +51,55 @@ fn serve<P: Plugin>(reader: &mut dyn BufRead, writer: &mut dyn Write) -> Result<
         }
         Operation::Execute { properties } => serde_json::from_value(properties)
             .context("Invalid plugin properties")
-            .and_then(|input| P::execute(&mut Client::attach(reader, writer), input))
+            .and_then(|input| P::execute(ctx, input))
             .map(|()| Value::Null),
     };
-    send(writer, PluginMessage::Finish { result: result.map_err(|error| error.to_string()) })
+    ctx.log.send(PluginMessage::Finish { result: result.map_err(|error| error.to_string()) })
 }
 
-fn send(writer: &mut dyn Write, message: PluginMessage) -> Result<()> {
-    writer
-        .write_all(&encode_frame(&message).map_err(Error::msg)?)
-        .and_then(|()| writer.flush())
-        .context("Could not write plugin message")
-}
-
-fn receive(reader: &mut dyn BufRead) -> Result<HostMessage> {
-    let mut line = Vec::new();
-    reader
-        .take((MAX_FRAME_BYTES + 1) as u64)
-        .read_until(b'\n', &mut line)
-        .context("Could not read plugin message")?;
-    decode_frame(&line).map_err(Error::msg)
-}
-
-pub struct Client<'a> {
-    reader: &'a mut dyn BufRead,
-    writer: &'a mut dyn Write,
+pub struct Context {
+    pub log: Logger,
+    reader: io::StdinLock<'static>,
     next_id: u64,
 }
 
-impl<'a> Client<'a> {
-    fn attach(reader: &'a mut dyn BufRead, writer: &'a mut dyn Write) -> Self {
-        Self { reader, writer, next_id: 1 }
+pub struct Logger {
+    writer: io::StdoutLock<'static>,
+}
+
+impl Logger {
+    pub fn info(&mut self, message: impl Into<String>) -> Result<()> {
+        self.send(PluginMessage::Log { level: LogLevel::Info, message: message.into() })
+    }
+
+    pub fn err(&mut self, message: impl Into<String>) -> Result<()> {
+        self.send(PluginMessage::Log { level: LogLevel::Error, message: message.into() })
+    }
+
+    fn send(&mut self, message: PluginMessage) -> Result<()> {
+        self.writer
+            .write_all(&encode_frame(&message).map_err(Error::msg)?)
+            .and_then(|()| self.writer.flush())
+            .context("Could not write plugin message")
+    }
+}
+
+impl Context {
+    fn receive(&mut self) -> Result<HostMessage> {
+        let mut line = Vec::new();
+        self.reader
+            .by_ref()
+            .take((MAX_FRAME_BYTES + 1) as u64)
+            .read_until(b'\n', &mut line)
+            .context("Could not read plugin message")?;
+        decode_frame(&line).map_err(Error::msg)
     }
 
     fn call<T: DeserializeOwned>(&mut self, call: Call) -> Result<T> {
         let id = self.next_id;
         self.next_id += 1;
-        send(self.writer, PluginMessage::Call { id, call })?;
-        match receive(self.reader)? {
+        self.log.send(PluginMessage::Call { id, call })?;
+        match self.receive()? {
             HostMessage::Reply { id: reply_id, result } if reply_id == id => {
                 serde_json::from_value(result.map_err(Error::msg)?).context("Invalid host response")
             }

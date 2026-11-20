@@ -63,9 +63,7 @@ pub struct Definition {
 #[serde(deny_unknown_fields)]
 pub struct Flow {
     #[serde(default)]
-    pub vault_id: Option<String>,
-    #[serde(default)]
-    pub inherited_vault_ids: Vec<String>,
+    pub vaults: Vec<String>,
     #[serde(default)]
     pub name: Option<String>,
     #[serde(default)]

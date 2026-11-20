@@ -1,27 +1,30 @@
 use crate::host::{NodeHost, NodeOutput, NodeScope};
 use crate::protocol::{
-    Call, HostMessage, MAX_FRAME_BYTES, Operation, PluginMessage, VERSION, decode_frame,
+    Call, HostMessage, LogLevel, MAX_FRAME_BYTES, Operation, PluginMessage, VERSION, decode_frame,
     encode_frame,
 };
 use crate::sdk::WORKSPACE_ENV;
 use crate::types::metadata::Metadata;
 use crate::types::node::OUTPUT_KEY;
 use anyhow::{Context, anyhow, ensure};
+use giong_docker::images;
 use serde::Serialize;
 use serde_json::Value;
 use std::collections::BTreeMap;
 use std::fs::File;
+use std::io::Write;
 use std::process::Stdio;
 use std::sync::Arc;
 use std::time::Duration;
 use tokio::io::{AsyncBufReadExt, AsyncReadExt, AsyncWriteExt, BufReader};
-use tokio::process::{Child, ChildStdout, Command};
+use tokio::process::{Child, ChildStdin, ChildStdout, Command};
 use tokio::time::timeout;
 use uuid::Uuid;
 
 const IO_TIMEOUT: Duration = Duration::from_secs(120);
 const EXIT_TIMEOUT: Duration = Duration::from_secs(10);
 const EXECUTION_TIMEOUT: Duration = Duration::from_secs(30 * 60);
+const METADATA_TIMEOUT: Duration = Duration::from_secs(20);
 const WORKSPACE_DIR: &str = "/workspace";
 const PLUGIN_EXECUTABLE: &str = "/usr/local/bin/giong-plugin";
 
@@ -95,9 +98,8 @@ pub struct Plugin {
 }
 
 impl Plugin {
-    pub fn new(kind: &str) -> anyhow::Result<Self> {
-        validate_plugin_kind(kind)?;
-        Ok(Self { image: image_reference(kind) })
+    pub fn from_image(image: String) -> Self {
+        Self { image }
     }
 
     pub async fn metadata(&self) -> anyhow::Result<Metadata> {
@@ -115,25 +117,41 @@ impl Plugin {
     }
 
     async fn invoke(&self, operation: Operation, state: Option<Host>) -> anyhow::Result<Value> {
-        let mut command = workspace_container()?;
         let name = format!("giong-plugin-{}", Uuid::now_v7());
-        let network = std::env::var("GIONG_PLUGIN_NETWORK").unwrap_or_else(|_| "bridge".into());
-        command
-            .args(["--name", &name, "--interactive", "--network", &network])
-            .args(["--add-host", "host.docker.internal:host-gateway"]);
-        let stderr = match &state {
+        let (mut command, stderr, execution_timeout) = match &state {
             Some(state) => {
+                let mut command = workspace_container()?;
+                let network =
+                    std::env::var("GIONG_PLUGIN_NETWORK").unwrap_or_else(|_| "bridge".into());
                 let scope = &state.context.scope;
                 let workspace = node_workspace(scope.flow_id, scope.node_id);
-                command.arg("--env").arg(format!("{WORKSPACE_ENV}={workspace}"));
-                Stdio::from(state.logger.try_clone()?)
+                command
+                    .args([
+                        "--network",
+                        &network,
+                        "--add-host",
+                        "host.docker.internal:host-gateway",
+                    ])
+                    .arg("--env")
+                    .arg(format!("{WORKSPACE_ENV}={workspace}"));
+                (command, Stdio::from(state.logger.try_clone()?), EXECUTION_TIMEOUT)
             }
-            None => Stdio::inherit(),
+            None => {
+                let mut command = plugin_container();
+                command.args([
+                    "--network=none",
+                    "--workdir=/tmp",
+                    "--pids-limit=64",
+                    "--memory=128m",
+                ]);
+                (command, Stdio::null(), METADATA_TIMEOUT)
+            }
         };
+        command.args(["--name", &name, "--interactive"]);
         let mut container = RunningContainer { name: Some(name) };
         let mut child = command
             .args(["--entrypoint", "timeout", "--", &self.image, "--kill-after=5s"])
-            .arg(format!("{}s", EXECUTION_TIMEOUT.as_secs()))
+            .arg(format!("{}s", execution_timeout.as_secs()))
             .arg(PLUGIN_EXECUTABLE)
             .stdin(Stdio::piped())
             .stdout(Stdio::piped())
@@ -143,7 +161,7 @@ impl Plugin {
             .with_context(|| format!("Could not start plugin image {}", self.image))?;
 
         let result = async {
-            let output = exchange(&mut child, operation, state, EXECUTION_TIMEOUT).await?;
+            let output = exchange(&mut child, operation, state, execution_timeout).await?;
             let status =
                 timeout(EXIT_TIMEOUT, child.wait()).await.context("Plugin did not exit")??;
             container.name = None;
@@ -197,7 +215,7 @@ async fn exchange(
     let mut stdin = child.stdin.take().context("Missing plugin stdin")?;
     let mut stdout = BufReader::new(child.stdout.take().context("Missing plugin stdout")?);
     let mut frame = Vec::new();
-    match receive(&mut stdout, &mut frame, IO_TIMEOUT).await? {
+    match receive(&mut stdout, &mut frame, response_timeout.min(IO_TIMEOUT)).await? {
         PluginMessage::Ready { version: VERSION } => {}
         PluginMessage::Ready { version } => {
             anyhow::bail!("Unsupported plugin protocol version {version}")
@@ -208,12 +226,9 @@ async fn exchange(
         let storage = host.context.host.storage(&host.context.scope);
         tokio::task::spawn_blocking(move || storage.delete(OUTPUT_KEY)).await??;
     }
-    let mut outgoing = HostMessage::Start { version: VERSION, operation };
+    send_to_plugin(&mut stdin, HostMessage::Start { version: VERSION, operation }).await?;
 
     loop {
-        let bytes = encode_frame(&outgoing).map_err(anyhow::Error::msg)?;
-        timeout(IO_TIMEOUT, stdin.write_all(&bytes)).await.context("Plugin input timed out")??;
-
         match receive(&mut stdout, &mut frame, response_timeout).await? {
             PluginMessage::Call { id, call } => {
                 let mut host =
@@ -224,12 +239,29 @@ async fn exchange(
                 })
                 .await?;
                 state = Some(host);
-                outgoing = HostMessage::Reply { id, result };
+                send_to_plugin(&mut stdin, HostMessage::Reply { id, result }).await?;
+            }
+            PluginMessage::Log { level, message } => {
+                let host = state
+                    .as_mut()
+                    .ok_or_else(|| anyhow!("Metadata cannot write execution logs"))?;
+                let level = match level {
+                    LogLevel::Info => "INFO",
+                    LogLevel::Error => "ERROR",
+                };
+                let line = format!("[{level}] {message}\n");
+                host.logger.write_all(line.as_bytes()).context("Could not write plugin log")?;
             }
             PluginMessage::Finish { result } => return Ok(result),
             PluginMessage::Ready { .. } => anyhow::bail!("Unexpected plugin ready message"),
         }
     }
+}
+
+async fn send_to_plugin(stdin: &mut ChildStdin, message: HostMessage) -> anyhow::Result<()> {
+    let bytes = encode_frame(&message).map_err(anyhow::Error::msg)?;
+    timeout(IO_TIMEOUT, stdin.write_all(&bytes)).await.context("Plugin input timed out")??;
+    Ok(())
 }
 
 async fn receive(
@@ -263,22 +295,17 @@ fn image_tag() -> String {
     std::env::var("GIONG_PLUGIN_IMAGE_TAG").unwrap_or_else(|_| "latest".into())
 }
 
-fn image_reference(kind: &str) -> String {
-    format!("{}{kind}:{}", image_prefix(), image_tag())
+fn kind_from_image_reference(reference: &str) -> Option<&str> {
+    let (repository, tag) = reference.rsplit_once(':')?;
+    let kind = repository.strip_prefix(&image_prefix())?;
+    (tag == image_tag() && validate_plugin_kind(kind).is_ok()).then_some(kind)
 }
 
 fn node_workspace(flow_id: Uuid, node_id: Uuid) -> String {
     format!("{WORKSPACE_DIR}/{flow_id}/node-{node_id}")
 }
 
-fn workspace_container() -> anyhow::Result<Command> {
-    let volume = std::env::var("GIONG_PLUGIN_WORKSPACE_VOLUME")
-        .unwrap_or_else(|_| "giong_plugin-workspaces".into());
-    ensure!(
-        volume.as_bytes().first().is_some_and(u8::is_ascii_alphanumeric)
-            && volume.bytes().all(|c| c.is_ascii_alphanumeric() || matches!(c, b'-' | b'_' | b'.')),
-        "Invalid GIONG_PLUGIN_WORKSPACE_VOLUME name"
-    );
+fn plugin_container() -> Command {
     let mut command = Command::new("docker");
     command
         .args([
@@ -289,12 +316,26 @@ fn workspace_container() -> anyhow::Result<Command> {
             "--read-only",
             "--cap-drop=ALL",
             "--security-opt=no-new-privileges:true",
+            "--user=65532:65532",
             "--tmpfs",
             "/tmp",
-            "--mount",
         ])
-        .arg(format!("type=volume,source={volume},target={WORKSPACE_DIR}"))
         .kill_on_drop(true);
+    command
+}
+
+fn workspace_container() -> anyhow::Result<Command> {
+    let volume = std::env::var("GIONG_PLUGIN_WORKSPACE_VOLUME")
+        .unwrap_or_else(|_| "giong_plugin-workspaces".into());
+    ensure!(
+        volume.as_bytes().first().is_some_and(u8::is_ascii_alphanumeric)
+            && volume.bytes().all(|c| c.is_ascii_alphanumeric() || matches!(c, b'-' | b'_' | b'.')),
+        "Invalid GIONG_PLUGIN_WORKSPACE_VOLUME name"
+    );
+    let mut command = plugin_container();
+    command
+        .args(["--workdir", WORKSPACE_DIR, "--mount"])
+        .arg(format!("type=volume,source={volume},target={WORKSPACE_DIR}"));
     Ok(command)
 }
 
@@ -311,45 +352,38 @@ async fn docker_output(command: &mut Command, action: &str) -> anyhow::Result<St
     Ok(String::from_utf8(output.stdout)?)
 }
 
-pub async fn installed_plugin_kinds() -> anyhow::Result<Vec<String>> {
-    let output = docker_output(
-        Command::new("docker").args(["image", "ls", "--format", "{{.Repository}}:{{.Tag}}"]),
-        "Could not list local plugin images",
-    )
-    .await?;
-    let prefix = image_prefix();
-    let suffix = format!(":{}", image_tag());
-    let mut kinds: Vec<_> = output
-        .lines()
-        .filter_map(|image| image.strip_prefix(&prefix)?.strip_suffix(&suffix))
-        .filter(|kind| validate_plugin_kind(kind).is_ok())
-        .map(str::to_owned)
-        .collect();
-    kinds.sort_unstable();
-    kinds.dedup();
-    Ok(kinds)
-}
-
-async fn remove_workspace_directory(path: &str) -> anyhow::Result<()> {
-    let kind = installed_plugin_kinds()
+async fn remove_workspace_directory(
+    path: &str,
+    registered_images: &[String],
+) -> anyhow::Result<()> {
+    let image = images::get_images()
         .await?
         .into_iter()
-        .next()
+        .find(|image| {
+            kind_from_image_reference(&image.reference).is_some()
+                || registered_images.contains(&image.id)
+        })
         .context("No local plugin image available to remove the workspace")?;
-    let image = image_reference(&kind);
     let mut command = workspace_container()?;
     command
-        .args(["--network=none", "--entrypoint", "timeout", "--", &image, "--kill-after=5s"])
+        .args(["--network=none", "--entrypoint", "timeout", "--", &image.id, "--kill-after=5s"])
         .arg(format!("{}s", IO_TIMEOUT.as_secs() - 5))
         .args(["rm", "-rf", "--", path]);
     docker_output(&mut command, "Could not remove plugin workspace").await?;
     Ok(())
 }
 
-pub async fn remove_workspace(flow_id: Uuid, node_id: Uuid) -> anyhow::Result<()> {
-    remove_workspace_directory(&node_workspace(flow_id, node_id)).await
+pub async fn remove_workspace(
+    flow_id: Uuid,
+    node_id: Uuid,
+    registered_images: &[String],
+) -> anyhow::Result<()> {
+    remove_workspace_directory(&node_workspace(flow_id, node_id), registered_images).await
 }
 
-pub async fn remove_flow_workspace(flow_id: Uuid) -> anyhow::Result<()> {
-    remove_workspace_directory(&format!("{WORKSPACE_DIR}/{flow_id}")).await
+pub async fn remove_flow_workspace(
+    flow_id: Uuid,
+    registered_images: &[String],
+) -> anyhow::Result<()> {
+    remove_workspace_directory(&format!("{WORKSPACE_DIR}/{flow_id}"), registered_images).await
 }

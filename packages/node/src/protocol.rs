@@ -24,7 +24,15 @@ pub enum Operation {
 pub enum PluginMessage {
     Ready { version: u16 },
     Call { id: u64, call: Call },
+    Log { level: LogLevel, message: String },
     Finish { result: Result<Value, String> },
+}
+
+#[derive(Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum LogLevel {
+    Info,
+    Error,
 }
 
 #[derive(Serialize, Deserialize)]

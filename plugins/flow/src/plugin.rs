@@ -1,9 +1,9 @@
+use crate::helpers::parse_flow;
 use crate::types::FlowProperties;
-use anyhow::{Result, anyhow};
-use giong_node::sdk::{Client, Plugin};
+use anyhow::Result;
+use giong_node::sdk::{Context, Plugin};
 use giong_node::types::metadata::Metadata;
 use giong_plugins_repository::RepositoryOutput;
-use serde_yaml_ng::Value;
 use std::path::Path;
 
 const FLOW_RUNNER_KIND: &str = "flow";
@@ -22,9 +22,9 @@ impl Plugin for Flow {
         }
     }
 
-    fn execute(client: &mut Client<'_>, properties: FlowProperties) -> Result<()> {
-        let source: RepositoryOutput = client.get_output(&properties.source)?;
-        let workspace = client.get_source_workspace(&properties.source)?;
+    fn execute(ctx: &mut Context, properties: FlowProperties) -> Result<()> {
+        let source: RepositoryOutput = ctx.get_output(&properties.source)?;
+        let workspace = ctx.get_source_workspace(&properties.source)?;
         let repository = giong_git::workspace_checkout(
             Path::new(&workspace),
             Path::new(&source.repository_path),
@@ -32,36 +32,14 @@ impl Plugin for Flow {
         let manifests = giong_git::read_manifests(&repository, Path::new(&properties.path))?;
         let mut definitions = Vec::new();
         for (path, content) in manifests {
-            if let Some(manifest) = parse_flow(&path, &content)? {
-                definitions.push(
-                    serde_yaml_ng::from_value(manifest)
-                        .map_err(|error| anyhow!("{path}: {error}"))?,
-                );
+            if let Some(flow) = parse_flow(&path, &content)? {
+                definitions.push(flow);
             }
         }
 
-        eprintln!("Synchronizing {} flow definitions.", definitions.len());
-        let report = client.synchronize_flow(definitions)?;
-        client.save_output(&report)?;
-        client.emit_changed()
+        ctx.log.info(format!("Synchronizing {} flow definitions.", definitions.len()))?;
+        let report = ctx.synchronize_flow(definitions)?;
+        ctx.save_output(&report)?;
+        ctx.emit_changed()
     }
-}
-
-fn parse_flow(path: &str, content: &str) -> Result<Option<Value>> {
-    let value: Value =
-        serde_yaml_ng::from_str(content).map_err(|error| anyhow!("{path}: {error}"))?;
-    let mut manifest = if let Some(flow) = value.get("flow") {
-        flow.clone()
-    } else if value.get("nodes").is_some() {
-        value
-    } else {
-        return Ok(None);
-    };
-    if let Some(fields) = manifest.as_mapping_mut()
-        && fields.get("name").is_none_or(Value::is_null)
-        && let Some(name) = Path::new(path).file_stem().and_then(|name| name.to_str())
-    {
-        fields.insert(Value::String("name".into()), Value::String(name.into()));
-    }
-    Ok(Some(manifest))
 }
