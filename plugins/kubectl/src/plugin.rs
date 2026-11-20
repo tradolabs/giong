@@ -1,6 +1,6 @@
 use crate::types::{DeploymentState, KubectlOutput, KubectlProperties};
 use anyhow::{Context as _, Result, bail, ensure};
-use giong_node::sdk::{Context, Logger, Plugin};
+use giong_node::sdk::{Context, Plugin};
 use giong_node::types::metadata::Metadata;
 use giong_plugins_repository::RepositoryOutput;
 use serde_json::json;
@@ -26,7 +26,7 @@ impl Plugin for Kubectl {
     }
 
     fn execute(ctx: &mut Context, properties: KubectlProperties) -> Result<()> {
-        ctx.log.info("Preparing kubectl deployment...")?;
+        ctx.log_info("Preparing kubectl deployment...")?;
 
         let source: RepositoryOutput = ctx.get_output(&properties.source)?;
         let workspace = ctx.get_source_workspace(&properties.source)?;
@@ -35,7 +35,7 @@ impl Plugin for Kubectl {
             Path::new(&source.repository_path),
         )?;
         let revision = giong_git::head(&repository)?;
-        ctx.log.info(format!("Source commit: {revision}"))?;
+        ctx.log_info(format!("Source commit: {revision}"))?;
 
         let configuration = DeploymentConfiguration::new(ctx, properties)?;
         let paths = configuration.comparison_paths()?;
@@ -43,14 +43,14 @@ impl Plugin for Kubectl {
         let state_key = format!("kubectl:last-successful-deployment:{}", ctx.get_scope()?);
         let previous = read_state(ctx, &state_key)?;
 
-        if should_skip(previous.as_ref(), &current, &repository, &paths, &mut ctx.log)? {
+        if should_skip(previous.as_ref(), &current, &repository, &paths, ctx)? {
             return save_output(ctx, current.revision, true);
         }
 
-        configuration.deploy(&repository, &ctx.open_workspace()?, &mut ctx.log)?;
+        configuration.deploy(&repository, &ctx.open_workspace()?, ctx)?;
         save_state(ctx, &state_key, &current)?;
         save_output(ctx, current.revision, false)?;
-        ctx.log.info("Deployment completed successfully.")
+        ctx.log_info("Deployment completed successfully.")
     }
 }
 
@@ -59,34 +59,34 @@ fn should_skip(
     current: &DeploymentState,
     repository: &Path,
     paths: &[String],
-    log: &mut Logger,
+    ctx: &mut Context,
 ) -> Result<bool> {
     let Some(previous) = previous else {
-        log.info("No previous successful deployment; deployment required.")?;
+        ctx.log_info("No previous successful deployment; deployment required.")?;
         return Ok(false);
     };
     if previous.configuration != current.configuration {
-        log.info("Deployment configuration changed; deployment required.")?;
+        ctx.log_info("Deployment configuration changed; deployment required.")?;
         return Ok(false);
     }
     if previous.revision == current.revision {
-        log.info(
+        ctx.log_info(
             "Skipping deployment: this commit and configuration were already deployed successfully."
         )?;
         return Ok(true);
     }
 
-    log.info("Checking chart and values files for changes...")?;
+    ctx.log_info("Checking chart and values files for changes...")?;
     // A missing or rewritten base commit requires deployment.
     let unchanged =
         giong_git::changed_files(repository, &previous.revision, &current.revision, paths)
             .is_ok_and(|files| files.is_empty());
     if unchanged {
-        log.info(
+        ctx.log_info(
             "Skipping deployment: chart and values files are unchanged since the last successful deployment."
         )?;
     } else {
-        log.info("Relevant files changed or comparison unavailable; deployment required.")?;
+        ctx.log_info("Relevant files changed or comparison unavailable; deployment required.")?;
     }
     Ok(unchanged)
 }
@@ -183,7 +183,7 @@ impl DeploymentConfiguration {
         Ok(paths)
     }
 
-    fn deploy(mut self, repository: &Path, workspace: &Path, log: &mut Logger) -> Result<()> {
+    fn deploy(mut self, repository: &Path, workspace: &Path, ctx: &mut Context) -> Result<()> {
         let temporary = tempfile::tempdir_in(workspace)?;
         let copy = temporary.path().join("repository");
         fs::create_dir(&copy)?;
@@ -197,7 +197,7 @@ impl DeploymentConfiguration {
         self.env.insert("HOME".into(), temporary.path().to_string_lossy().into_owned());
         self.env.insert("KUBECONFIG".into(), config.path().to_string_lossy().into_owned());
 
-        log.info("Building Helm dependencies...")?;
+        ctx.log_info("Building Helm dependencies...")?;
         run_logged(Command::new("helm").args(["dependency", "build"]).arg(&chart).envs(&self.env))?;
         let manifests = temporary.path().join("manifests.yaml");
         let output = File::create(&manifests)?;
@@ -216,7 +216,7 @@ impl DeploymentConfiguration {
         }
         ensure!(helm.status()?.success(), "Helm template failed");
 
-        log.info("Applying manifests with kubectl...")?;
+        ctx.log_info("Applying manifests with kubectl...")?;
         run_logged(
             Command::new("kubectl")
                 .args(["--namespace", &self.namespace, "apply", "-f"])

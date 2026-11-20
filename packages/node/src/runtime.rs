@@ -10,21 +10,23 @@ use anyhow::{Context, anyhow, ensure};
 use giong_docker::images;
 use serde::Serialize;
 use serde_json::Value;
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, HashMap};
 use std::fs::File;
 use std::io::Write;
 use std::process::Stdio;
-use std::sync::Arc;
+use std::sync::{Arc, OnceLock};
 use std::time::Duration;
 use tokio::io::{AsyncBufReadExt, AsyncReadExt, AsyncWriteExt, BufReader};
 use tokio::process::{Child, ChildStdin, ChildStdout, Command};
-use tokio::time::timeout;
+use tokio::sync::Mutex;
+use tokio::time::{sleep, timeout};
 use uuid::Uuid;
 
 const IO_TIMEOUT: Duration = Duration::from_secs(120);
 const EXIT_TIMEOUT: Duration = Duration::from_secs(10);
 const EXECUTION_TIMEOUT: Duration = Duration::from_secs(30 * 60);
 const METADATA_TIMEOUT: Duration = Duration::from_secs(20);
+const DEFAULT_IDLE_TIMEOUT_SECS: u64 = 30;
 const WORKSPACE_DIR: &str = "/workspace";
 const PLUGIN_EXECUTABLE: &str = "/usr/local/bin/giong-plugin";
 
@@ -103,7 +105,39 @@ impl Plugin {
     }
 
     pub async fn metadata(&self) -> anyhow::Result<Metadata> {
-        Ok(serde_json::from_value(self.invoke(Operation::Metadata, None).await?)?)
+        let mut command = plugin_container();
+        command.args([
+            "--network=none",
+            "--workdir=/tmp",
+            "--pids-limit=64",
+            "--memory=128m",
+        ]);
+        let name = format!("giong-plugin-{}", Uuid::now_v7());
+        command.args(["--name", &name, "--interactive"]);
+        let mut container = RunningContainer { name: Some(name) };
+        let mut child = command
+            .args(["--entrypoint", "timeout", "--", &self.image, "--kill-after=5s"])
+            .arg(format!("{}s", METADATA_TIMEOUT.as_secs()))
+            .arg(PLUGIN_EXECUTABLE)
+            .stdin(Stdio::piped())
+            .stdout(Stdio::piped())
+            .stderr(Stdio::null())
+            .kill_on_drop(true)
+            .spawn()
+            .with_context(|| format!("Could not start plugin image {}", self.image))?;
+
+        let result =
+            run_plugin_process(&mut child, Operation::Metadata, None, METADATA_TIMEOUT, || {
+                container.name = None;
+            })
+            .await;
+        drop(child);
+        if let Some(name) = container.name.as_deref() {
+            remove_container(name).await;
+            container.name = None;
+        }
+        let value = result.with_context(|| format!("Plugin image {}", self.image))?;
+        Ok(serde_json::from_value(value)?)
     }
 
     pub async fn execute(
@@ -112,70 +146,252 @@ impl Plugin {
         properties: Value,
     ) -> anyhow::Result<()> {
         let host = tokio::task::spawn_blocking(move || Host::new(context)).await??;
-        self.invoke(Operation::Execute { properties }, Some(host)).await?;
-        Ok(())
-    }
+        let network = std::env::var("GIONG_PLUGIN_NETWORK").unwrap_or_else(|_| "bridge".into());
+        let scope = &host.context.scope;
+        let workspace = node_workspace(scope.flow_id, scope.node_id);
+        let stderr = Stdio::from(host.logger.try_clone()?);
 
-    async fn invoke(&self, operation: Operation, state: Option<Host>) -> anyhow::Result<Value> {
-        let name = format!("giong-plugin-{}", Uuid::now_v7());
-        let (mut command, stderr, execution_timeout) = match &state {
-            Some(state) => {
-                let mut command = workspace_container()?;
-                let network =
-                    std::env::var("GIONG_PLUGIN_NETWORK").unwrap_or_else(|_| "bridge".into());
-                let scope = &state.context.scope;
-                let workspace = node_workspace(scope.flow_id, scope.node_id);
-                command
-                    .args([
-                        "--network",
-                        &network,
-                        "--add-host",
-                        "host.docker.internal:host-gateway",
-                    ])
-                    .arg("--env")
-                    .arg(format!("{WORKSPACE_ENV}={workspace}"));
-                (command, Stdio::from(state.logger.try_clone()?), EXECUTION_TIMEOUT)
-            }
-            None => {
-                let mut command = plugin_container();
-                command.args([
-                    "--network=none",
-                    "--workdir=/tmp",
-                    "--pids-limit=64",
-                    "--memory=128m",
-                ]);
-                (command, Stdio::null(), METADATA_TIMEOUT)
-            }
-        };
-        command.args(["--name", &name, "--interactive"]);
-        let mut container = RunningContainer { name: Some(name) };
-        let mut child = command
-            .args(["--entrypoint", "timeout", "--", &self.image, "--kill-after=5s"])
-            .arg(format!("{}s", execution_timeout.as_secs()))
+        let lease = container_pool().acquire(&self.image, &network).await?;
+        let mut command = Command::new("docker");
+        command
+            .args(["exec", "--interactive", "--env"])
+            .arg(format!("{WORKSPACE_ENV}={workspace}"))
+            .arg(lease.name())
+            .args(["timeout", "--kill-after=5s"])
+            .arg(format!("{}s", EXECUTION_TIMEOUT.as_secs()))
             .arg(PLUGIN_EXECUTABLE)
             .stdin(Stdio::piped())
             .stdout(Stdio::piped())
             .stderr(stderr)
-            .kill_on_drop(true)
-            .spawn()
-            .with_context(|| format!("Could not start plugin image {}", self.image))?;
+            .kill_on_drop(true);
 
-        let result = async {
-            let output = exchange(&mut child, operation, state, execution_timeout).await?;
-            let status =
-                timeout(EXIT_TIMEOUT, child.wait()).await.context("Plugin did not exit")??;
-            container.name = None;
-            ensure!(status.success(), "Plugin process exited with {status}");
-            output.map_err(anyhow::Error::msg)
-        }
+        let mut child = command
+            .spawn()
+            .with_context(|| format!("Could not exec into plugin container {}", lease.name()))?;
+
+        let result = run_plugin_process(
+            &mut child,
+            Operation::Execute { properties },
+            Some(host),
+            EXECUTION_TIMEOUT,
+            || {},
+        )
         .await;
         drop(child);
-        if let Some(name) = container.name.as_deref() {
-            remove_container(name).await;
-            container.name = None;
-        }
-        result.with_context(|| format!("Plugin image {}", self.image))
+        lease.release().await;
+        result.with_context(|| format!("Plugin image {}", self.image))?;
+        Ok(())
     }
+}
+
+async fn run_plugin_process(
+    child: &mut Child,
+    operation: Operation,
+    state: Option<Host>,
+    execution_timeout: Duration,
+    on_exited: impl FnOnce(),
+) -> anyhow::Result<Value> {
+    let output = exchange(child, operation, state, execution_timeout).await?;
+    let status = timeout(EXIT_TIMEOUT, child.wait()).await.context("Plugin did not exit")??;
+    on_exited();
+    ensure!(status.success(), "Plugin process exited with {status}");
+    output.map_err(anyhow::Error::msg)
+}
+
+#[derive(Clone, Eq, Hash, PartialEq)]
+struct ContainerKey {
+    image: String,
+    network: String,
+}
+
+#[derive(Clone, Copy, Eq, PartialEq)]
+enum ContainerStatus {
+    Unstarted,
+    Running,
+    Stopped,
+}
+
+struct WarmState {
+    status: ContainerStatus,
+    active: usize,
+    generation: u64,
+}
+
+struct WarmContainer {
+    key: ContainerKey,
+    name: String,
+    state: Mutex<WarmState>,
+}
+
+struct ContainerPool {
+    containers: Mutex<HashMap<ContainerKey, Arc<WarmContainer>>>,
+}
+
+struct ContainerLease {
+    container: Arc<WarmContainer>,
+    released: bool,
+}
+
+fn container_pool() -> &'static ContainerPool {
+    static POOL: OnceLock<ContainerPool> = OnceLock::new();
+    POOL.get_or_init(|| ContainerPool { containers: Mutex::new(HashMap::new()) })
+}
+
+fn idle_timeout() -> Duration {
+    let secs = std::env::var("GIONG_PLUGIN_IDLE_TIMEOUT_SECS")
+        .ok()
+        .and_then(|value| value.parse::<u64>().ok())
+        .unwrap_or(DEFAULT_IDLE_TIMEOUT_SECS);
+    Duration::from_secs(secs)
+}
+
+impl ContainerPool {
+    async fn acquire(&self, image: &str, network: &str) -> anyhow::Result<ContainerLease> {
+        let key = ContainerKey { image: image.to_owned(), network: network.to_owned() };
+        loop {
+            let container = {
+                let mut containers = self.containers.lock().await;
+                if let Some(existing) = containers.get(&key) {
+                    Arc::clone(existing)
+                } else {
+                    let created = Arc::new(WarmContainer {
+                        key: key.clone(),
+                        name: format!("giong-plugin-{}", Uuid::now_v7()),
+                        state: Mutex::new(WarmState {
+                            status: ContainerStatus::Unstarted,
+                            active: 0,
+                            generation: 0,
+                        }),
+                    });
+                    containers.insert(key.clone(), Arc::clone(&created));
+                    created
+                }
+            };
+
+            let mut state = container.state.lock().await;
+            match state.status {
+                ContainerStatus::Unstarted => {
+                    if let Err(error) = start_detached_container(&container.key, &container.name).await
+                    {
+                        state.status = ContainerStatus::Stopped;
+                        drop(state);
+                        self.remove_entry(&container).await;
+                        remove_container(&container.name).await;
+                        return Err(error);
+                    }
+                    state.status = ContainerStatus::Running;
+                    state.active += 1;
+                    state.generation += 1;
+                    drop(state);
+                    return Ok(ContainerLease { container, released: false });
+                }
+                ContainerStatus::Running => {
+                    state.active += 1;
+                    state.generation += 1;
+                    drop(state);
+                    return Ok(ContainerLease { container, released: false });
+                }
+                ContainerStatus::Stopped => {
+                    drop(state);
+                    self.remove_entry(&container).await;
+                }
+            }
+        }
+    }
+
+    async fn remove_entry(&self, target: &Arc<WarmContainer>) {
+        let mut containers = self.containers.lock().await;
+        if let Some(current) = containers.get(&target.key)
+            && Arc::ptr_eq(current, target)
+        {
+            containers.remove(&target.key);
+        }
+    }
+}
+
+impl WarmContainer {
+    async fn release(self: Arc<Self>) {
+        let generation = {
+            let mut state = self.state.lock().await;
+            state.active = state.active.saturating_sub(1);
+            state.generation += 1;
+            if state.active != 0 || state.status != ContainerStatus::Running {
+                return;
+            }
+            state.generation
+        };
+
+        let container = Arc::clone(&self);
+        tokio::spawn(async move {
+            sleep(idle_timeout()).await;
+            container.stop_if_idle(generation).await;
+        });
+    }
+
+    async fn stop_if_idle(self: Arc<Self>, expected_generation: u64) {
+        {
+            let mut state = self.state.lock().await;
+            if state.active != 0
+                || state.generation != expected_generation
+                || state.status != ContainerStatus::Running
+            {
+                return;
+            }
+            state.status = ContainerStatus::Stopped;
+        }
+        container_pool().remove_entry(&self).await;
+        remove_container(&self.name).await;
+    }
+}
+
+impl ContainerLease {
+    fn name(&self) -> &str {
+        &self.container.name
+    }
+
+    async fn release(mut self) {
+        self.released = true;
+        Arc::clone(&self.container).release().await;
+    }
+}
+
+impl Drop for ContainerLease {
+    fn drop(&mut self) {
+        if self.released {
+            return;
+        }
+        let container = Arc::clone(&self.container);
+        if let Ok(runtime) = tokio::runtime::Handle::try_current() {
+            runtime.spawn(async move {
+                container.release().await;
+            });
+        }
+    }
+}
+
+async fn start_detached_container(key: &ContainerKey, name: &str) -> anyhow::Result<()> {
+    let guard_secs = idle_timeout().as_secs().saturating_add(5);
+    let script = format!(
+        "elapsed=0; while [ \"$elapsed\" -lt {guard_secs} ]; do sleep 5; if pidof giong-plugin >/dev/null 2>&1; then elapsed=0; else elapsed=$((elapsed + 5)); fi; done"
+    );
+    let mut command = workspace_container()?;
+    command.args([
+        "--detach",
+        "--network",
+        &key.network,
+        "--add-host",
+        "host.docker.internal:host-gateway",
+        "--name",
+        name,
+        "--entrypoint",
+        "sh",
+        "--",
+        &key.image,
+        "-c",
+        &script,
+    ]);
+    docker_output(&mut command, &format!("Could not start plugin image {}", key.image)).await?;
+    Ok(())
 }
 
 struct RunningContainer {

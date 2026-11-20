@@ -37,7 +37,7 @@ impl Plugin for Flow {
             }
         }
 
-        ctx.log.info(format!("Synchronizing {} flow definitions.", definitions.len()))?;
+        ctx.log_info(format!("Synchronizing {} flow definitions.", definitions.len()))?;
         let report = ctx.synchronize_flow(definitions)?;
         ctx.save_output(&report)?;
         ctx.emit_changed()

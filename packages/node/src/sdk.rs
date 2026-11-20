@@ -15,7 +15,7 @@ use std::process::ExitCode;
 
 pub(crate) const WORKSPACE_ENV: &str = "GIONG_NODE_WORKSPACE";
 
-/// Implement a plugin executable. Use `ctx.log` to write execution logs.
+/// Implement a plugin executable. Use `ctx.log_info` and `ctx.log_err` to write execution logs.
 pub trait Plugin {
     type Input: DeserializeOwned;
 
@@ -26,7 +26,7 @@ pub trait Plugin {
 /// Run one plugin invocation using JSON Lines on stdin and stdout.
 pub fn run<P: Plugin>() -> ExitCode {
     let mut ctx = Context {
-        log: Logger { writer: io::stdout().lock() },
+        writer: io::stdout().lock(),
         reader: io::stdin().lock(),
         next_id: 1,
     };
@@ -40,7 +40,7 @@ pub fn run<P: Plugin>() -> ExitCode {
 }
 
 fn serve<P: Plugin>(ctx: &mut Context) -> Result<()> {
-    ctx.log.send(PluginMessage::Ready { version: VERSION })?;
+    ctx.send(PluginMessage::Ready { version: VERSION })?;
     let HostMessage::Start { version, operation } = ctx.receive()? else {
         bail!("Expected a plugin start message");
     };
@@ -54,25 +54,21 @@ fn serve<P: Plugin>(ctx: &mut Context) -> Result<()> {
             .and_then(|input| P::execute(ctx, input))
             .map(|()| Value::Null),
     };
-    ctx.log.send(PluginMessage::Finish { result: result.map_err(|error| error.to_string()) })
+    ctx.send(PluginMessage::Finish { result: result.map_err(|error| error.to_string()) })
 }
 
 pub struct Context {
-    pub log: Logger,
+    writer: io::StdoutLock<'static>,
     reader: io::StdinLock<'static>,
     next_id: u64,
 }
 
-pub struct Logger {
-    writer: io::StdoutLock<'static>,
-}
-
-impl Logger {
-    pub fn info(&mut self, message: impl Into<String>) -> Result<()> {
+impl Context {
+    pub fn log_info(&mut self, message: impl Into<String>) -> Result<()> {
         self.send(PluginMessage::Log { level: LogLevel::Info, message: message.into() })
     }
 
-    pub fn err(&mut self, message: impl Into<String>) -> Result<()> {
+    pub fn log_err(&mut self, message: impl Into<String>) -> Result<()> {
         self.send(PluginMessage::Log { level: LogLevel::Error, message: message.into() })
     }
 
@@ -82,9 +78,7 @@ impl Logger {
             .and_then(|()| self.writer.flush())
             .context("Could not write plugin message")
     }
-}
 
-impl Context {
     fn receive(&mut self) -> Result<HostMessage> {
         let mut line = Vec::new();
         self.reader
@@ -98,7 +92,7 @@ impl Context {
     fn call<T: DeserializeOwned>(&mut self, call: Call) -> Result<T> {
         let id = self.next_id;
         self.next_id += 1;
-        self.log.send(PluginMessage::Call { id, call })?;
+        self.send(PluginMessage::Call { id, call })?;
         match self.receive()? {
             HostMessage::Reply { id: reply_id, result } if reply_id == id => {
                 serde_json::from_value(result.map_err(Error::msg)?).context("Invalid host response")
