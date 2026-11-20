@@ -26,7 +26,7 @@ spec:
           {{- if .Values.dind.enabled }}
           env:
             - name: DOCKER_HOST
-              value: tcp://127.0.0.1:2375
+              value: unix:///run/docker/docker.sock
           {{- end }}
           envFrom:
             - secretRef:
@@ -46,9 +46,15 @@ spec:
           volumeMounts:
             - name: data
               mountPath: /data/.giong
+            {{- if .Values.dind.enabled }}
+            - name: docker-sock
+              mountPath: /run/docker
+            {{- end }}
         {{- if .Values.dind.enabled }}
         - name: dind
           image: {{ .Values.dind.image }}
+          args:
+            - --host=unix:///run/docker/docker.sock
           securityContext:
             privileged: true
           env:
@@ -57,6 +63,8 @@ spec:
           volumeMounts:
             - name: docker-storage
               mountPath: /var/lib/docker
+            - name: docker-sock
+              mountPath: /run/docker
         {{- end }}
       volumes:
         - name: data
@@ -64,5 +72,7 @@ spec:
             claimName: {{ include "chart.fullname" . }}-data
         {{- if .Values.dind.enabled }}
         - name: docker-storage
+          emptyDir: {}
+        - name: docker-sock
           emptyDir: {}
         {{- end }}
