@@ -1,0 +1,48 @@
+name: Chart
+
+on:
+  push:
+    tags:
+      - "[0-9]*"
+  workflow_dispatch:
+
+concurrency:
+  group: publish-chart
+  cancel-in-progress: false
+
+env:
+  REGISTRY: ghcr.io
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Helm
+        uses: azure/setup-helm@v4
+
+      - name: Lint chart
+        run: helm lint deployments/chart
+
+      - name: Log in to Container Registry
+        run: |
+          printf '%s' "${{ secrets.GITHUB_TOKEN }}" | helm registry login "${{ env.REGISTRY }}" \
+            --username "${{ github.actor }}" \
+            --password-stdin
+
+      - name: Package and push chart
+        run: |
+          repository=$(printf '%s' "${{ github.repository }}" | tr '[:upper:]' '[:lower:]')
+          if [ "${{ github.ref_type }}" = "tag" ]; then
+            version="${{ github.ref_name }}"
+            helm package deployments/chart --version "$version" --app-version "$version" -d /tmp/chart
+          else
+            helm package deployments/chart -d /tmp/chart
+          fi
+          helm push /tmp/chart/*.tgz "oci://${{ env.REGISTRY }}/${repository}/charts"
