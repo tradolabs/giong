@@ -16,6 +16,8 @@ spec:
       labels:
         {{- include "chart.labels" . | nindent 8 }}
     spec:
+      securityContext:
+        fsGroup: 65532
       containers:
         - name: giong
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
@@ -63,6 +65,15 @@ spec:
           volumeMounts:
             - name: docker-storage
               mountPath: /var/lib/docker
+            - name: data
+              mountPath: /var/lib/docker/image
+              subPath: dind/image
+            - name: data
+              mountPath: /var/lib/docker/overlay2
+              subPath: dind/overlay2
+            - name: data
+              mountPath: /data/.giong/workspaces
+              subPath: workspaces
             - name: docker-sock
               mountPath: /run/docker
         {{- end }}

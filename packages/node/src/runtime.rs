@@ -541,17 +541,21 @@ fn plugin_container() -> Command {
 }
 
 fn workspace_container() -> anyhow::Result<Command> {
-    let volume = std::env::var("GIONG_PLUGIN_WORKSPACE_VOLUME")
-        .unwrap_or_else(|_| "giong_plugin-workspaces".into());
-    ensure!(
-        volume.as_bytes().first().is_some_and(u8::is_ascii_alphanumeric)
-            && volume.bytes().all(|c| c.is_ascii_alphanumeric() || matches!(c, b'-' | b'_' | b'.')),
-        "Invalid GIONG_PLUGIN_WORKSPACE_VOLUME name"
-    );
+    let data_dir = std::env::var_os("GIONG_DATA_DIR")
+        .filter(|value| !value.is_empty())
+        .map(std::path::PathBuf::from)
+        .unwrap_or_else(|| {
+            std::path::PathBuf::from(std::env::var_os("HOME").expect("HOME must be set"))
+                .join(".giong")
+        });
+    let dir = data_dir.join("workspaces");
+    std::fs::create_dir_all(&dir)?;
+    let dir = dir.to_str().context("Workspace path is not UTF-8")?;
+    ensure!(!dir.contains(','), "Workspace path cannot contain commas");
     let mut command = plugin_container();
     command
         .args(["--workdir", WORKSPACE_DIR, "--mount"])
-        .arg(format!("type=volume,source={volume},target={WORKSPACE_DIR}"));
+        .arg(format!("type=bind,source={dir},target={WORKSPACE_DIR}"));
     Ok(command)
 }
 
