@@ -45,4 +45,4 @@ jobs:
           else
             helm package deployments/chart -d /tmp/chart
           fi
-          helm push /tmp/chart/*.tgz "oci://${{ env.REGISTRY }}/${repository}/charts"
+          helm push /tmp/chart/*.tgz "oci://${{ env.REGISTRY }}/${repository}"

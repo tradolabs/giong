@@ -1,5 +1,5 @@
 image:
-  repository: ghcr.io/tradolabs/giong
+  repository: ghcr.io/tradolabs/giong/giong
   tag: latest
   pullPolicy: IfNotPresent
 
