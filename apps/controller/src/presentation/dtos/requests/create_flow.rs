@@ -6,5 +6,5 @@ pub(in crate::presentation) struct CreateFlowRequestDto {
     #[validate(length(min = 1), non_control_character)]
     pub name: String,
     #[serde(default)]
-    pub inherited_vault_ids: Vec<uuid::Uuid>,
+    pub vault_ids: Vec<uuid::Uuid>,
 }

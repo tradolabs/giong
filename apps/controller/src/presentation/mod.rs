@@ -1,4 +1,4 @@
-use self::controllers::{auth as auth_controller, flows, index, node, vault};
+use self::controllers::{auth as auth_controller, flows, index, node, plugin, vault};
 use axum::{
     Router,
     extract::DefaultBodyLimit,
@@ -26,6 +26,12 @@ pub async fn serve(application: Arc<Application>) -> anyhow::Result<()> {
         .merge(
             Router::new()
                 .route("/nodes/kinds", get(node::get_kinds))
+                .route(
+                    "/plugins",
+                    get(plugin::get_plugins)
+                        .post(plugin::install_plugin)
+                        .delete(plugin::remove_plugin),
+                )
                 .route("/vaults", get(vault::get_vaults).post(vault::create_vault))
                 .route(
                     "/vaults/{vault_id}",

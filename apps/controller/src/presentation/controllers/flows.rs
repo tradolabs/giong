@@ -45,7 +45,7 @@ pub(in crate::presentation) async fn create_flow(
     let flow = application
         .create_flow(CreateFlowInput {
             name: input.name.trim().to_owned(),
-            inherited_vault_ids: input.inherited_vault_ids,
+            vault_ids: input.vault_ids,
         })
         .await?;
     Ok((StatusCode::CREATED, Json(flow_response(&application, flow)?)))
@@ -57,11 +57,7 @@ pub(in crate::presentation) async fn update_flow(
     ValidatedJson(input): ValidatedJson<UpdateFlowRequestDto>,
 ) -> Result<impl IntoResponse, HttpException> {
     let flow = application
-        .update_flow(UpdateFlowInput {
-            id: flow_id,
-            name: input.name,
-            inherited_vault_ids: input.inherited_vault_ids,
-        })
+        .update_flow(UpdateFlowInput { id: flow_id, name: input.name, vault_ids: input.vault_ids })
         .await?;
     Ok(Json(flow_response(&application, flow)?))
 }
