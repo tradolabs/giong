@@ -3,6 +3,7 @@ import type { NodeExecution } from "../types/node-execution";
 import type { NodeDetails } from "../types/node-details";
 import type { Vault, Secret } from "../types/secret";
 import type { Flow, FlowNode, NodeDefinition } from "../types/flow";
+import type { Plugin, PluginInventory } from "../types/plugin";
 import { UnauthorizedError } from "./exception";
 import { getStoredToken, setStoredToken } from "./local-storage";
 
@@ -89,13 +90,23 @@ export function fetchFlows(signal?: AbortSignal): Promise<Flow[]> {
   return request<Flow[]>("/flows", { signal });
 }
 
-let nodeKindsRequest: Promise<string[]> | undefined;
+export function fetchNodeKinds(signal?: AbortSignal): Promise<string[]> {
+  return request<string[]>("/nodes/kinds", { signal });
+}
 
-export function fetchNodeKinds(): Promise<string[]> {
-  return nodeKindsRequest ??= request<string[]>("/nodes/kinds").catch((error) => {
-    nodeKindsRequest = undefined;
-    throw error;
+export function fetchPlugins(signal?: AbortSignal): Promise<PluginInventory> {
+  return request<PluginInventory>("/plugins", { signal });
+}
+
+export function installPlugin(image: string, pull: boolean): Promise<Plugin> {
+  return request<Plugin>("/plugins", {
+    method: "POST",
+    body: JSON.stringify({ image, pull }),
   });
+}
+
+export function removePlugin(kind: string): Promise<void> {
+  return request<void>(`/plugins?kind=${encodeURIComponent(kind)}`, { method: "DELETE" });
 }
 
 export function executeNode(flowId: string, nodeId: string): Promise<NodeExecution> {
@@ -120,7 +131,7 @@ export function fetchNodeDetails(flowId: string, nodeId: string, signal?: AbortS
 
 export function updateFlow(
   flowId: string,
-  settings: Pick<Flow, "name" | "inherited_vault_ids">,
+  settings: Pick<Flow, "name" | "vault_ids">,
 ): Promise<Flow> {
   return request<Flow>(`/flows/${encodeURIComponent(flowId)}`, {
     method: "PUT",
@@ -128,7 +139,7 @@ export function updateFlow(
   });
 }
 
-export function createFlow(input: Pick<Flow, "name" | "inherited_vault_ids">): Promise<Flow> {
+export function createFlow(input: Pick<Flow, "name" | "vault_ids">): Promise<Flow> {
   return request<Flow>("/flows", {
     method: "POST",
     body: JSON.stringify(input),

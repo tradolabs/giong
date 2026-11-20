@@ -21,8 +21,7 @@ export interface Flow {
   id: string;
   name: string;
   nodes: FlowNode[];
-  vault_id: string;
-  inherited_vault_ids: string[];
+  vault_ids: string[];
   created_at: string;
   updated_at: string;
 }

@@ -3,7 +3,12 @@ import { getApiErrorMessage } from "../../../api/errors";
 import { fetchFlows, executeNode as requestNodeExecution } from "../../../api/requests";
 import type { Flow } from "../../../types/flow";
 
-export function useDashboardData(onSignOut: () => void, selectedFlowId: string | null, enabled: boolean) {
+export function useDashboardData(
+  onSignOut: () => void,
+  selectedFlowId: string | null,
+  enabled: boolean,
+  refreshRevision?: number,
+) {
   const flowRevision = useRef(0);
   const currentFlowId = useRef(selectedFlowId);
   currentFlowId.current = selectedFlowId;
@@ -46,7 +51,7 @@ export function useDashboardData(onSignOut: () => void, selectedFlowId: string |
       controller.abort();
       window.clearTimeout(timeout);
     };
-  }, [enabled, selectedFlowId, onSignOut]);
+  }, [enabled, selectedFlowId, onSignOut, refreshRevision]);
 
   useEffect(() => {
     setSelectedNodeId(current =>
