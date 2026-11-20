@@ -36,7 +36,14 @@ impl ExecuteNodeUseCase {
             .await?
             .ok_or(ResourceException::NotFound(Resource::Node))?;
 
-        let plugin = Plugin::new(&node.kind)?;
+        let kind = node.kind.as_str();
+        let plugin = self
+            .database
+            .plugins
+            .find_one(Condition::new().eq("kind", kind))
+            .await?
+            .ok_or_else(|| Exception::BadRequest(format!("Plugin {kind} is not installed")))?;
+        let plugin = Plugin::from_image(plugin.image_id);
         let context = ExecutionContext {
             host: self.node_host.clone(),
             scope: NodeScope {
@@ -47,7 +54,10 @@ impl ExecuteNodeUseCase {
             },
         };
         writeln!(logger, "Executing node {} ({})", node.name, node.kind)?;
-        plugin.execute(context, node.properties).await.map_err(Exception::unexpected)
+        plugin
+            .execute(context, node.properties)
+            .await
+            .map_err(|error| Exception::unexpected(format!("{error:#}")))
     }
 
     fn finish_execution(

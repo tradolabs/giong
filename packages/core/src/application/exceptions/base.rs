@@ -37,6 +37,12 @@ impl From<giong_database::error::Error> for Exception {
     }
 }
 
+impl From<giong_docker::error::Error> for Exception {
+    fn from(error: giong_docker::error::Error) -> Self {
+        Self::unexpected(error)
+    }
+}
+
 impl From<serde_json::Error> for Exception {
     fn from(error: serde_json::Error) -> Self {
         Self::Unexpected(error.to_string())

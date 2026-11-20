@@ -13,9 +13,13 @@ use crate::application::use_cases::delete_node::DeleteNodeUseCase;
 use crate::application::use_cases::delete_secret::DeleteSecretUseCase;
 use crate::application::use_cases::delete_vault::DeleteVaultUseCase;
 use crate::application::use_cases::get_node_details::GetNodeDetailsUseCase;
+use crate::application::use_cases::get_node_kinds::GetNodeKindsUseCase;
+use crate::application::use_cases::get_plugins::GetPluginsUseCase;
 use crate::application::use_cases::get_secret::GetSecretUseCase;
 use crate::application::use_cases::get_secrets::GetSecretsUseCase;
 use crate::application::use_cases::get_vaults::GetVaultsUseCase;
+use crate::application::use_cases::install_plugin::InstallPluginUseCase;
+use crate::application::use_cases::remove_plugin::RemovePluginUseCase;
 use crate::application::use_cases::resume_pending_executions::ResumePendingExecutionsUseCase;
 use crate::application::use_cases::update_node::UpdateNodeUseCase;
 use crate::application::use_cases::update_secret::UpdateSecretUseCase;
@@ -77,6 +81,10 @@ pub async fn ensure_initialized(config: Config) -> anyhow::Result<Arc<Applicatio
         .register_type::<FlowService>()
         .register_type::<SecretService>()
         .register_type::<NodeHostService>()
+        .register_type::<GetNodeKindsUseCase>()
+        .register_type::<GetPluginsUseCase>()
+        .register_type::<InstallPluginUseCase>()
+        .register_type::<RemovePluginUseCase>()
         .register_type::<ResumePendingExecutionsUseCase>()
         .register_type::<CreateVaultUseCase>()
         .register_type::<GetVaultsUseCase>()

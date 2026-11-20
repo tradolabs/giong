@@ -1,3 +1,5 @@
+use crate::application::exceptions::base::Exception;
+use crate::application::exceptions::resource::ResourceException;
 use crate::application::services::flow::FlowService;
 use crate::application::services::node::NodeService;
 use crate::application::services::secret::SecretService;
@@ -6,6 +8,7 @@ use giong_node::host::{Flow, FlowSyncResult, NodeHost, NodeOutput, NodeScope};
 use giong_node::storage::Storage;
 use std::collections::BTreeMap;
 use std::fs::File;
+use std::io::Write;
 use std::sync::Arc;
 use tokio::runtime::Handle;
 use uuid::Uuid;
@@ -36,14 +39,20 @@ impl NodeHost for NodeHostService {
         vault: Option<&str>,
         key: &str,
     ) -> anyhow::Result<String> {
-        Handle::try_current()?.block_on(async {
+        let result = Handle::try_current()?.block_on(async {
             let flow = self.flow_service.get_flow(scope.flow_id).await?;
-            let inherited_vault_ids: Vec<Uuid> = serde_json::from_value(flow.inherited_vault_ids)?;
-            Ok(self
-                .secret_service
-                .get_secret_value(Some(flow.vault_id), &inherited_vault_ids, vault, key)
-                .await?)
-        })
+            let vault_ids: Vec<Uuid> = serde_json::from_value(flow.vault_ids)?;
+            self.secret_service.get_secret_value(&vault_ids, vault, key).await
+        });
+        if let Err(
+            error
+            @ (Exception::BadRequest(_) | Exception::Resource(ResourceException::NotFound(_))),
+        ) = &result
+            && let Ok(mut logger) = self.open_log(scope)
+        {
+            let _ = writeln!(logger, "Secret lookup failed: {error}");
+        }
+        Ok(result?)
     }
 
     fn emit_changed(&self, scope: &NodeScope) -> anyhow::Result<()> {

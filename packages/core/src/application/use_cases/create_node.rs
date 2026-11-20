@@ -33,20 +33,19 @@ impl UseCase for CreateNodeUseCase {
             .find_one(Condition::new().eq("id", input.flow_id))
             .await?
             .ok_or(ResourceException::NotFound(Resource::Flow))?;
-        let kind = NodeService::canonical_plugin_kind(&input.kind);
         self.node_service
             .validate_flow_nodes(
                 flow.id,
                 None,
                 &input.name,
-                kind,
+                &input.kind,
                 &input.properties,
                 &input.triggers,
             )
             .await?;
         let changes = Document::new()
             .set("name", input.name)
-            .set("kind", kind)
+            .set("kind", input.kind)
             .set("properties", input.properties)
             .set("triggers", serde_json::to_value(&input.triggers)?);
         let node = self

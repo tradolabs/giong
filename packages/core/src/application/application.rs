@@ -1,6 +1,7 @@
 use crate::application::exceptions::base::Exception;
 use crate::application::services::node::NodeService;
 use crate::application::types::node_execution::NodeExecution;
+use crate::application::types::plugin::{PluginInfo, PluginInventory};
 use crate::application::use_cases::{
     create_flow::{CreateFlowInput, CreateFlowUseCase},
     create_node::{CreateNodeInput, CreateNodeUseCase},
@@ -12,10 +13,14 @@ use crate::application::use_cases::{
     delete_vault::DeleteVaultUseCase,
     get_flows::GetFlowsUseCase,
     get_node_details::{GetNodeDetailsUseCase, NodeDetails},
+    get_node_kinds::GetNodeKindsUseCase,
     get_node_logs::{GetNodeLogsInput, GetNodeLogsUseCase},
+    get_plugins::GetPluginsUseCase,
     get_secret::{GetSecretInput, GetSecretUseCase},
     get_secrets::GetSecretsUseCase,
     get_vaults::GetVaultsUseCase,
+    install_plugin::{InstallPluginInput, InstallPluginUseCase},
+    remove_plugin::RemovePluginUseCase,
     reset_admin_password::ResetAdminPasswordUseCase,
     resume_pending_executions::ResumePendingExecutionsUseCase,
     sign_in::{SignInInput, SignInOutput, SignInUseCase},
@@ -69,7 +74,22 @@ impl Application {
     }
 
     pub async fn get_node_kinds(&self) -> Result<Vec<String>, Exception> {
-        self.container.get::<NodeService>()?.get_kinds().await
+        self.container.get::<GetNodeKindsUseCase>()?.execute(()).await
+    }
+
+    pub async fn get_plugins(&self) -> Result<PluginInventory, Exception> {
+        self.container.get::<GetPluginsUseCase>()?.execute(()).await
+    }
+
+    pub async fn install_plugin(&self, image: &str, pull: bool) -> Result<PluginInfo, Exception> {
+        self.container
+            .get::<InstallPluginUseCase>()?
+            .execute(InstallPluginInput { image: image.to_owned(), pull })
+            .await
+    }
+
+    pub async fn remove_plugin(&self, kind: &str) -> Result<(), Exception> {
+        self.container.get::<RemovePluginUseCase>()?.execute(kind.to_owned()).await
     }
 
     pub fn get_latest_node_execution(

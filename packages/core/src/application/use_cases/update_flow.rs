@@ -17,7 +17,7 @@ pub struct UpdateFlowUseCase {
 pub struct UpdateFlowInput {
     pub id: Uuid,
     pub name: String,
-    pub inherited_vault_ids: Vec<Uuid>,
+    pub vault_ids: Vec<Uuid>,
 }
 
 impl UseCase for UpdateFlowUseCase {
@@ -25,7 +25,7 @@ impl UseCase for UpdateFlowUseCase {
     type Output = FlowEntity;
     async fn execute(&self, input: Self::Input) -> Result<FlowEntity, Exception> {
         let name = input.name;
-        let inherited_vault_ids = input.inherited_vault_ids;
+        let vault_ids = input.vault_ids;
         let name = name.trim().to_owned();
 
         let is_name_existed = self
@@ -43,7 +43,7 @@ impl UseCase for UpdateFlowUseCase {
                 Condition::new().eq("id", input.id),
                 Document::new()
                     .set("name", name)
-                    .set("inherited_vault_ids", serde_json::to_value(inherited_vault_ids)?),
+                    .set("vault_ids", serde_json::to_value(vault_ids)?),
             )
             .await?;
 

@@ -5,11 +5,11 @@ use crate::application::services::node::NodeService;
 use giong_database::Database;
 use giong_database::entities::flow_entity::FlowEntity;
 use giong_database::entities::node_entity::NodeEntity;
-use giong_database::entities::vault_entity::VaultScope;
 use giong_database::error::Error as DatabaseError;
 use giong_database::repositories::types::condition::Condition;
 use giong_database::repositories::types::document::Document;
 use giong_di::Injectable;
+use giong_docker::images;
 use giong_kv::kv::Kv;
 use giong_node::host::{Definition, Flow, FlowSyncResult, NodeScope, SyncedFlow, Trigger};
 use serde::{Deserialize, Serialize};
@@ -27,7 +27,6 @@ pub struct FlowService {
 #[derive(Clone, Serialize, Deserialize)]
 struct ManagedFlow {
     id: Uuid,
-    vault_id: Uuid,
 }
 
 struct PlannedNode {
@@ -41,9 +40,8 @@ struct PlannedNode {
 
 struct PlannedFlow {
     id: Uuid,
-    vault_id: Uuid,
     name: String,
-    inherited_vault_ids: serde_json::Value,
+    vault_ids: serde_json::Value,
     exists: bool,
     node_count: u32,
     nodes: Vec<PlannedNode>,
@@ -106,20 +104,6 @@ impl FlowService {
         self.cache.graphs.write().await.remove(&flow_id);
     }
 
-    pub(crate) async fn unique_vault_name(
-        database: &Database,
-        flow_name: &str,
-    ) -> Result<String, DatabaseError> {
-        let base = format!("{flow_name} secrets");
-        let mut candidate = base.clone();
-        let mut suffix = 2;
-        while database.vaults.exists(Condition::new().eq("name", candidate.as_str())).await? {
-            candidate = format!("{base} ({suffix})");
-            suffix += 1;
-        }
-        Ok(candidate)
-    }
-
     pub(super) async fn sync_flows(
         &self,
         scope: &NodeScope,
@@ -150,16 +134,14 @@ impl FlowService {
             .find_one(Condition::new().eq("id", runner.flow_id))
             .await?
             .ok_or(ResourceException::NotFound(Resource::Flow))?;
-        let mut allowed: HashSet<Uuid> =
-            serde_json::from_value::<Vec<Uuid>>(caller.inherited_vault_ids)?.into_iter().collect();
-        allowed.insert(caller.vault_id);
-        let known_vaults: HashSet<_> = self
+        let allowed: Vec<Uuid> = serde_json::from_value(caller.vault_ids)?;
+        let available_vaults: HashMap<_, _> = self
             .database
             .vaults
-            .find(Condition::new())
+            .find(Condition::new().is_in("id", allowed))
             .await?
             .into_iter()
-            .map(|vault| vault.id)
+            .map(|vault| (vault.name, vault.id))
             .collect();
         let existing_flows = self.database.flows.find(Condition::new()).await?;
         // The registry is outside guest node storage, so a guest cannot claim other flows.
@@ -171,14 +153,15 @@ impl FlowService {
         };
         let mut names = HashSet::new();
         let mut plan = Vec::new();
-        let installed = NodeService::installed_kinds().await?;
-        for mut definition in definitions {
-            for node in &mut definition.nodes {
-                let kind = NodeService::canonical_plugin_kind(&node.kind);
-                if kind != node.kind {
-                    node.kind = kind.to_owned();
-                }
-            }
+        let registered = self.database.plugins.find(Condition::new()).await?;
+        let local_image_ids: HashSet<_> =
+            images::get_images().await?.into_iter().map(|image| image.id).collect();
+        let available_kinds: HashSet<_> = registered
+            .into_iter()
+            .filter(|plugin| local_image_ids.contains(&plugin.image_id))
+            .map(|plugin| plugin.kind)
+            .collect();
+        for definition in definitions {
             let name = definition.name.as_deref().unwrap_or("").trim().to_owned();
             if name.is_empty() || name.chars().any(char::is_control) || !names.insert(name.clone())
             {
@@ -188,7 +171,7 @@ impl FlowService {
             }
             let managed = registry
                 .entry(name.clone())
-                .or_insert_with(|| ManagedFlow { id: Uuid::now_v7(), vault_id: Uuid::now_v7() })
+                .or_insert_with(|| ManagedFlow { id: Uuid::now_v7() })
                 .clone();
             if managed.id == caller.id
                 || existing_flows.iter().any(|flow| flow.name == name && flow.id != managed.id)
@@ -198,28 +181,18 @@ impl FlowService {
                 )));
             }
             let current = existing_flows.iter().find(|flow| flow.id == managed.id);
-            if current.is_some_and(|flow| flow.vault_id != managed.vault_id) {
-                return Err(Exception::BadRequest("Managed flow vault has changed".into()));
-            }
-            if let Some(vault) = &definition.vault_id {
-                if Uuid::parse_str(vault).ok() != Some(managed.vault_id) {
-                    return Err(Exception::BadRequest(
-                        "Imported flow vault_id is generated automatically".into(),
-                    ));
-                }
-            }
-            let mut inherited = Vec::new();
+            let mut vault_ids = Vec::new();
             let mut unique_vaults = HashSet::new();
-            for vault in &definition.inherited_vault_ids {
-                let id = Uuid::parse_str(vault)
-                    .map_err(|_| Exception::BadRequest("Invalid inherited vault ID".into()))?;
-                if !unique_vaults.insert(id)
-                    || !allowed.contains(&id)
-                    || !known_vaults.contains(&id)
-                {
-                    return Err(Exception::BadRequest("Imported flows can only attach unique vaults available to the calling flow".into()));
+            for vault in &definition.vaults {
+                let id = available_vaults.get(vault).copied().ok_or_else(|| {
+                    Exception::BadRequest(format!(
+                        "Vault {vault} is not attached to the calling flow"
+                    ))
+                })?;
+                if !unique_vaults.insert(id) {
+                    return Err(Exception::BadRequest(format!("Duplicate vault {vault}")));
                 }
-                inherited.push(id);
+                vault_ids.push(id);
             }
             let existing_nodes =
                 self.database.nodes.find(Condition::new().eq("flow_id", managed.id)).await?;
@@ -250,7 +223,7 @@ impl FlowService {
             let node_count = (merged.len() + definition.nodes.len()) as u32;
             let mut nodes = Vec::new();
             for node in definition.nodes {
-                if installed.binary_search(&node.kind).is_err() {
+                if !available_kinds.contains(&node.kind) {
                     return Err(Exception::BadRequest(format!(
                         "Plugin is not installed: {}",
                         node.kind
@@ -277,9 +250,8 @@ impl FlowService {
             }
             plan.push(PlannedFlow {
                 id: managed.id,
-                vault_id: managed.vault_id,
                 name,
-                inherited_vault_ids: serde_json::to_value(inherited)?,
+                vault_ids: serde_json::to_value(vault_ids)?,
                 exists: current.is_some(),
                 node_count,
                 nodes,
@@ -293,7 +265,7 @@ impl FlowService {
                 for flow in &plan {
                     let changes = Document::new()
                         .set("name", flow.name.clone())
-                        .set("inherited_vault_ids", flow.inherited_vault_ids.clone());
+                        .set("vault_ids", flow.vault_ids.clone());
                     if flow.exists {
                         if !self
                             .database
@@ -306,27 +278,7 @@ impl FlowService {
                             ));
                         }
                     } else {
-                        if !self
-                            .database
-                            .vaults
-                            .exists(Condition::new().eq("id", flow.vault_id))
-                            .await?
-                        {
-                            let name = Self::unique_vault_name(&self.database, &flow.name).await?;
-                            self.database
-                                .vaults
-                                .create_one(
-                                    Document::new()
-                                        .set("id", flow.vault_id)
-                                        .set("name", name)
-                                        .set("scope", VaultScope::Flow),
-                                )
-                                .await?;
-                        }
-                        self.database
-                            .flows
-                            .create_one(changes.set("id", flow.id).set("vault_id", flow.vault_id))
-                            .await?;
+                        self.database.flows.create_one(changes.set("id", flow.id)).await?;
                     }
                     for node in &flow.nodes {
                         let changes = Document::new()

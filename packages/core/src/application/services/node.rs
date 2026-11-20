@@ -10,7 +10,7 @@ use giong_database::repositories::types::condition::Condition;
 use giong_di::Injectable;
 use giong_kv::kv::Kv;
 use giong_node::host::{Flow, FlowSyncResult, NodeOutput, NodeScope, Trigger};
-use giong_node::runtime::{installed_plugin_kinds, validate_plugin_kind};
+use giong_node::runtime::validate_plugin_kind;
 use giong_node::storage::Storage;
 use giong_node::types::node::OUTPUT_KEY;
 use giong_scheduler::IntervalScheduler;
@@ -69,22 +69,6 @@ impl NodeService {
             }
         }
         Ok(outputs)
-    }
-
-    pub(crate) fn canonical_plugin_kind(kind: &str) -> &str {
-        match kind {
-            "runners/flow" => "flow",
-            "runners/kubectl" => "kubectl",
-            kind => kind,
-        }
-    }
-
-    pub(super) async fn installed_kinds() -> anyhow::Result<Vec<String>> {
-        installed_plugin_kinds().await
-    }
-
-    pub(crate) async fn get_kinds(&self) -> Result<Vec<String>, Exception> {
-        Ok(Self::installed_kinds().await?)
     }
 
     pub(crate) async fn enqueue_execution(

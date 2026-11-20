@@ -65,7 +65,19 @@ impl UseCase for DeleteNodeUseCase {
             .await?;
         self.node_service.unschedule_node(node_id).await?;
         self.flow_service.invalidate_graph(flow_id).await;
-        if let Err(error) = giong_node::runtime::remove_workspace(flow_id, node_id).await {
+        let cleanup_workspace = async {
+            let images: Vec<_> = self
+                .database
+                .plugins
+                .find(Condition::new())
+                .await?
+                .into_iter()
+                .map(|plugin| plugin.image_id)
+                .collect();
+            giong_node::runtime::remove_workspace(flow_id, node_id, &images).await?;
+            Ok::<(), Exception>(())
+        };
+        if let Err(error) = cleanup_workspace.await {
             eprintln!("Could not remove node workspace {node_id}: {error}");
         }
         let kv = self.kv.clone();
